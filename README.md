@@ -1,27 +1,18 @@
 # The Register
 
-> A minimalist, privacy-first attendance tracking app engineered with precision.
+> A highly accurate, privacy-first, offline attendance tracking application.
 
-**The Register** is a Flutter-based attendance tracking application designed with a strict, brutalist "ink-on-paper" aesthetic. It rejects modern bubbly UI trends in favor of vintage ledgers, mechanical split-flap displays, and crisp typography. 
-
-Crafted strictly for students who want a beautiful, automated way to track their classes without sacrificing their data to cloud servers.
+**The Register** is a Flutter-based attendance tracking system engineered for precision and automation. It allows students to reliably track their classes locally on their devices, ensuring maximum privacy without relying on cloud services or external APIs.
 
 ---
 
-## // Features
+## // Core Features
 
+- **High-Accuracy Smart Automation:** Background tracking fuses GPS coordinates and specific Campus WiFi SSIDs to accurately detect when you are physically sitting in a lecture hall.
 - **100% Offline & Private:** Built on top of local Drift SQLite. Your location data and schedule never leave your device. Zero cloud analytics. Zero API keys.
-- **Smart Automation:** Background tracking fuses GPS coordinates and specific Campus WiFi SSIDs to accurately detect when you are physically sitting in a lecture hall.
-- **OpenStreetMap Integration:** Accurately pin your venues on a fully free and open map interface, no Google Maps API keys required.
-- **Timetable Sharing:** Export and share your entire semester's timetable with classmates using base64 share codes or JSON files.
-- **"Ledger" Aesthetic:** Designed around the IBM Plex font family, utilizing hairline borders, high-contrast monochrome tones, and mechanical animations.
-
-## // Aesthetic Philosophy
-
-The app is built around the **"Register"** design language:
-- **Colors:** Ink black, stark white, cream (`#F8F7F2`), and a single striking red accent (`#E53935`).
-- **Typography:** IBM Plex Sans for modern legibility, IBM Plex Mono for data. 
-- **Motion:** Micro-animations mimic physical mechanics (rubber stamps pressing down, split-flap numbers rotating).
+- **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface. Navigate and set accurate radii for geofencing without Google Maps API keys.
+- **Timetable Sharing & Export:** Export and share your entire semester's timetable with classmates using base64 share codes or direct JSON file transfers.
+- **Automated Background Checks:** Relies on robust Android background services to periodically check location and network state, ensuring you never miss logging a class.
 
 ## // Getting Started
 
@@ -29,7 +20,7 @@ To build and run this project, you will need to have [Flutter](https://flutter.d
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/the-register.git
+   git clone https://github.com/prxyansh/the-register.git
    cd the-register
    ```
 
