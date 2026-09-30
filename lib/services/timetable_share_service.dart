@@ -54,17 +54,17 @@ class TimetableShareService {
     await Share.shareXFiles([XFile(path)], subject: 'Timetable Backup');
   }
 
-  Future<int> importFromCode(String base64Code) async {
+  Future<int> importFromCode(String base64Code, {bool clearExisting = false}) async {
     try {
       final bytes = base64Decode(base64Code);
       final jsonString = utf8.decode(bytes);
-      return await _importJson(jsonString);
+      return await _importJson(jsonString, clearExisting: clearExisting);
     } catch (e) {
       throw FormatException('Invalid share code format.');
     }
   }
 
-  Future<int> importFromJsonFile() async {
+  Future<int> importFromJsonFile({bool clearExisting = false}) async {
     const XTypeGroup typeGroup = XTypeGroup(
       label: 'json',
       extensions: <String>['json'],
@@ -73,15 +73,22 @@ class TimetableShareService {
     
     if (file != null) {
       final jsonString = await file.readAsString();
-      return await _importJson(jsonString);
+      return await _importJson(jsonString, clearExisting: clearExisting);
     }
     return 0; // Cancelled
   }
 
-  Future<int> _importJson(String jsonContent) async {
+  Future<int> _importJson(String jsonContent, {bool clearExisting = false}) async {
     final data = jsonDecode(jsonContent) as Map<String, dynamic>;
     if (data['type'] != 'timetable_share') {
       throw FormatException('Not a valid timetable share file.');
+    }
+    
+    if (clearExisting) {
+      // Clear attendance records first to avoid foreign key issues
+      await db.delete(db.attendanceRecords).go();
+      await db.delete(db.timetableEntries).go();
+      await db.delete(db.subjects).go();
     }
     
     final existingSubjects = await db.subjectsDao.getAllSubjects();

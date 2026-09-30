@@ -126,6 +126,30 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
       },
     );
   }
+  Future<bool?> _askClearTimetable(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear Existing Timetable?'),
+        content: const Text(
+            'Do you want to completely clear your existing timetable and all attendance records before importing the new one?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep Existing'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Yes, Clear It'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showImportDialog(BuildContext context, WidgetRef ref) {
     showDialog(
@@ -153,10 +177,14 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 label: const Text('Pick JSON File'),
                 onPressed: () async {
                   Navigator.pop(dialogContext);
+                  
+                  final clearExisting = await _askClearTimetable(context);
+                  if (clearExisting == null) return; // Cancelled
+                  
                   final db = ref.read(databaseProvider);
                   final service = TimetableShareService(db);
                   try {
-                    final count = await service.importFromJsonFile();
+                    final count = await service.importFromJsonFile(clearExisting: clearExisting);
                     if (count > 0 && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Successfully imported $count classes!')),
@@ -188,10 +216,14 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 final code = controller.text.trim();
                 if (code.isEmpty) return;
                 Navigator.pop(dialogContext);
+                
+                final clearExisting = await _askClearTimetable(context);
+                if (clearExisting == null) return; // Cancelled
+                
                 final db = ref.read(databaseProvider);
                 final service = TimetableShareService(db);
                 try {
-                  final count = await service.importFromCode(code);
+                  final count = await service.importFromCode(code, clearExisting: clearExisting);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Successfully imported $count classes!')),
