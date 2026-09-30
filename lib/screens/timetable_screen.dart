@@ -130,7 +130,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
   void _showImportDialog(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         final controller = TextEditingController();
         return AlertDialog(
           title: const Text('Import Timetable'),
@@ -152,7 +152,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 icon: const Icon(Icons.file_download_rounded),
                 label: const Text('Pick JSON File'),
                 onPressed: () async {
-                  Navigator.pop(context);
+                  Navigator.pop(dialogContext);
                   final db = ref.read(databaseProvider);
                   final service = TimetableShareService(db);
                   try {
@@ -180,14 +180,14 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () async {
                 final code = controller.text.trim();
                 if (code.isEmpty) return;
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
                 final db = ref.read(databaseProvider);
                 final service = TimetableShareService(db);
                 try {
