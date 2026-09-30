@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
@@ -223,6 +224,85 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
+  void _showAIGuideDialog(BuildContext context) {
+    const promptText = '''Please read this timetable image and convert it into the following strict JSON format. Do not add any text before or after the JSON block.
+
+```json
+{
+  "type": "timetable_share",
+  "version": 1,
+  "subjects": [
+    {
+      "id": 1,
+      "name": "Data Structures",
+      "color": 4293322470,
+      "target_attendance_pct": 75.0
+    },
+    {
+      "id": 2,
+      "name": "Computer Networks",
+      "color": 4283215696,
+      "target_attendance_pct": 75.0
+    }
+  ],
+  "entries": [
+    {
+      "subject_id": 1,
+      "day_of_week": 1, 
+      "start_time": "09:00",
+      "end_time": "10:00"
+    },
+    {
+      "subject_id": 2,
+      "day_of_week": 2,
+      "start_time": "10:00",
+      "end_time": "11:00"
+    }
+  ]
+}
+```
+Notes for AI:
+- day_of_week: 1 is Monday, 7 is Sunday.
+- color: Just use 4282339765 for all subjects if you don't know what to put.
+- subject_id in the entries list must match the id in the subjects list.
+- Time must be in 24-hour HH:MM format.''';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('AI Import Guide'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('You can ask ChatGPT or Gemini to convert a picture of your timetable into a JSON file we can import!'),
+              SizedBox(height: 16),
+              Text('Just copy the prompt below and paste it along with your image:'),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CLOSE'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Clipboard.setData(const ClipboardData(text: promptText));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Prompt copied to clipboard!'))
+              );
+              Navigator.pop(ctx);
+            },
+            icon: const Icon(Icons.copy_rounded),
+            label: const Text('COPY PROMPT'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -311,18 +391,30 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.file_open_rounded),
-              title: const Text('Import from JSON'),
-              subtitle: const Text('Restore a previous backup'),
-              trailing: _importing
-                  ? const SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.upload_file_rounded),
-              onTap: _importing ? null : _importJson,
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.file_open_rounded),
+                  title: const Text('Import from JSON'),
+                  subtitle: const Text('Restore a previous backup'),
+                  trailing: _importing
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.upload_file_rounded),
+                  onTap: _importing ? null : _importJson,
+                ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.smart_toy_rounded),
+                  title: const Text('AI Import Guide'),
+                  subtitle: const Text('Convert images to JSON with ChatGPT'),
+                  trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+                  onTap: () => _showAIGuideDialog(context),
+                ),
+              ],
             ),
           ),
 
