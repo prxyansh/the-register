@@ -236,7 +236,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       "id": 1,
       "name": "Data Structures",
       "color": 4293322470,
-      "target_attendance_pct": 75.0
+      "target_attendance_pct": 75.0,
+      "faculty_name": "Prof. Smith"
     },
     {
       "id": 2,
@@ -265,7 +266,8 @@ Notes for AI:
 - day_of_week: 1 is Monday, 7 is Sunday.
 - color: Just use 4282339765 for all subjects if you don't know what to put.
 - subject_id in the entries list must match the id in the subjects list.
-- Time must be in 24-hour HH:MM format.''';
+- Time must be in 24-hour HH:MM format.
+- faculty_name is optional. If you see a teacher's name, include it.''';
 
     showDialog(
       context: context,

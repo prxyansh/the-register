@@ -16,6 +16,7 @@ class SubjectFormDialog extends StatefulWidget {
 
 class _SubjectFormDialogState extends State<SubjectFormDialog> {
   late final TextEditingController _nameController;
+  late final TextEditingController _facultyController;
   late int _selectedColor;
   late double _targetPct;
   final _formKey = GlobalKey<FormState>();
@@ -27,6 +28,8 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
     super.initState();
     _nameController =
         TextEditingController(text: widget.existingSubject?.name ?? '');
+    _facultyController =
+        TextEditingController(text: widget.existingSubject?.facultyName ?? '');
     _selectedColor = widget.existingSubject?.color ??
         RegisterTheme.subjectColors.first.toARGB32();
     _targetPct = widget.existingSubject?.targetAttendancePct ?? 75.0;
@@ -35,6 +38,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
   @override
   void dispose() {
     _nameController.dispose();
+    _facultyController.dispose();
     super.dispose();
   }
 
@@ -95,6 +99,18 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+
+              // Faculty field
+              TextFormField(
+                controller: _facultyController,
+                textCapitalization: TextCapitalization.words,
+                decoration: const InputDecoration(
+                  labelText: 'Faculty Name (Optional)',
+                  hintText: 'e.g. Prof. Smith',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -177,6 +193,7 @@ class _SubjectFormDialogState extends State<SubjectFormDialog> {
 
     final result = {
       'name': _nameController.text.trim(),
+      'facultyName': _facultyController.text.trim().isEmpty ? null : _facultyController.text.trim(),
       'color': _selectedColor,
       'targetPct': _targetPct,
     };

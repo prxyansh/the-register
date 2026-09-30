@@ -265,11 +265,25 @@ class _SubjectReportRow extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        report.subject.name,
-                        style: RegisterTheme.body(theme.colorScheme.onSurface).copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            report.subject.name,
+                            style: RegisterTheme.body(theme.colorScheme.onSurface).copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (report.subject.facultyName != null && report.subject.facultyName!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              report.subject.facultyName!,
+                              style: RegisterTheme.bodySmall(theme.colorScheme.onSurfaceVariant).copyWith(
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],

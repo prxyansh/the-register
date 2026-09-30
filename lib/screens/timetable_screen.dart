@@ -240,6 +240,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
       await ref.read(subjectsDaoProvider).insertSubject(
             SubjectsCompanion.insert(
               name: result['name'] as String,
+              facultyName: Value(result['facultyName'] as String?),
               color: result['color'] as int,
               targetAttendancePct: Value(result['targetPct'] as double),
             ),
@@ -369,6 +370,16 @@ class _SubjectCard extends ConsumerWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (subject.facultyName != null && subject.facultyName!.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subject.facultyName!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 2),
                     Text(
                       'Target: ${subject.targetAttendancePct.round()}%',
@@ -428,6 +439,7 @@ class _SubjectCard extends ConsumerWidget {
       await ref.read(subjectsDaoProvider).updateSubject(
             subject.copyWith(
               name: result['name'] as String,
+              facultyName: Value(result['facultyName'] as String?),
               color: result['color'] as int,
               targetAttendancePct: result['targetPct'] as double,
             ),

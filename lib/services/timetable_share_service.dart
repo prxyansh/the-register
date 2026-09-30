@@ -22,6 +22,7 @@ class TimetableShareService {
         'name': s.name,
         'color': s.color,
         'target_attendance_pct': s.targetAttendancePct,
+        if (s.facultyName != null) 'faculty_name': s.facultyName,
       }).toList(),
       'entries': entries.map((e) => {
         'subject_id': e.subjectId,
@@ -106,6 +107,7 @@ class TimetableShareService {
           name: name,
           color: map['color'] as int,
           targetAttendancePct: Value((map['target_attendance_pct'] as num).toDouble()),
+          facultyName: Value(map['faculty_name'] as String?),
         ));
         subjectIdMap[oldId] = newId;
       }

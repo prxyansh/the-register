@@ -55,8 +55,25 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         requiredDuringInsert: false,
         defaultValue: const Constant(75.0),
       );
+  static const VerificationMeta _facultyNameMeta = const VerificationMeta(
+    'facultyName',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, name, color, targetAttendancePct];
+  late final GeneratedColumn<String> facultyName = GeneratedColumn<String>(
+    'faculty_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    color,
+    targetAttendancePct,
+    facultyName,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -97,6 +114,15 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         ),
       );
     }
+    if (data.containsKey('faculty_name')) {
+      context.handle(
+        _facultyNameMeta,
+        facultyName.isAcceptableOrUnknown(
+          data['faculty_name']!,
+          _facultyNameMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -122,6 +148,10 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
         DriftSqlType.double,
         data['${effectivePrefix}target_attendance_pct'],
       )!,
+      facultyName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}faculty_name'],
+      ),
     );
   }
 
@@ -136,11 +166,13 @@ class Subject extends DataClass implements Insertable<Subject> {
   final String name;
   final int color;
   final double targetAttendancePct;
+  final String? facultyName;
   const Subject({
     required this.id,
     required this.name,
     required this.color,
     required this.targetAttendancePct,
+    this.facultyName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -149,6 +181,9 @@ class Subject extends DataClass implements Insertable<Subject> {
     map['name'] = Variable<String>(name);
     map['color'] = Variable<int>(color);
     map['target_attendance_pct'] = Variable<double>(targetAttendancePct);
+    if (!nullToAbsent || facultyName != null) {
+      map['faculty_name'] = Variable<String>(facultyName);
+    }
     return map;
   }
 
@@ -158,6 +193,9 @@ class Subject extends DataClass implements Insertable<Subject> {
       name: Value(name),
       color: Value(color),
       targetAttendancePct: Value(targetAttendancePct),
+      facultyName: facultyName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(facultyName),
     );
   }
 
@@ -173,6 +211,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       targetAttendancePct: serializer.fromJson<double>(
         json['targetAttendancePct'],
       ),
+      facultyName: serializer.fromJson<String?>(json['facultyName']),
     );
   }
   @override
@@ -183,6 +222,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       'name': serializer.toJson<String>(name),
       'color': serializer.toJson<int>(color),
       'targetAttendancePct': serializer.toJson<double>(targetAttendancePct),
+      'facultyName': serializer.toJson<String?>(facultyName),
     };
   }
 
@@ -191,11 +231,13 @@ class Subject extends DataClass implements Insertable<Subject> {
     String? name,
     int? color,
     double? targetAttendancePct,
+    Value<String?> facultyName = const Value.absent(),
   }) => Subject(
     id: id ?? this.id,
     name: name ?? this.name,
     color: color ?? this.color,
     targetAttendancePct: targetAttendancePct ?? this.targetAttendancePct,
+    facultyName: facultyName.present ? facultyName.value : this.facultyName,
   );
   Subject copyWithCompanion(SubjectsCompanion data) {
     return Subject(
@@ -205,6 +247,9 @@ class Subject extends DataClass implements Insertable<Subject> {
       targetAttendancePct: data.targetAttendancePct.present
           ? data.targetAttendancePct.value
           : this.targetAttendancePct,
+      facultyName: data.facultyName.present
+          ? data.facultyName.value
+          : this.facultyName,
     );
   }
 
@@ -214,13 +259,15 @@ class Subject extends DataClass implements Insertable<Subject> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('targetAttendancePct: $targetAttendancePct')
+          ..write('targetAttendancePct: $targetAttendancePct, ')
+          ..write('facultyName: $facultyName')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, color, targetAttendancePct);
+  int get hashCode =>
+      Object.hash(id, name, color, targetAttendancePct, facultyName);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -228,7 +275,8 @@ class Subject extends DataClass implements Insertable<Subject> {
           other.id == this.id &&
           other.name == this.name &&
           other.color == this.color &&
-          other.targetAttendancePct == this.targetAttendancePct);
+          other.targetAttendancePct == this.targetAttendancePct &&
+          other.facultyName == this.facultyName);
 }
 
 class SubjectsCompanion extends UpdateCompanion<Subject> {
@@ -236,17 +284,20 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
   final Value<String> name;
   final Value<int> color;
   final Value<double> targetAttendancePct;
+  final Value<String?> facultyName;
   const SubjectsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.color = const Value.absent(),
     this.targetAttendancePct = const Value.absent(),
+    this.facultyName = const Value.absent(),
   });
   SubjectsCompanion.insert({
     this.id = const Value.absent(),
     required String name,
     required int color,
     this.targetAttendancePct = const Value.absent(),
+    this.facultyName = const Value.absent(),
   }) : name = Value(name),
        color = Value(color);
   static Insertable<Subject> custom({
@@ -254,6 +305,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Expression<String>? name,
     Expression<int>? color,
     Expression<double>? targetAttendancePct,
+    Expression<String>? facultyName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -261,6 +313,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
       if (color != null) 'color': color,
       if (targetAttendancePct != null)
         'target_attendance_pct': targetAttendancePct,
+      if (facultyName != null) 'faculty_name': facultyName,
     });
   }
 
@@ -269,12 +322,14 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Value<String>? name,
     Value<int>? color,
     Value<double>? targetAttendancePct,
+    Value<String?>? facultyName,
   }) {
     return SubjectsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
       color: color ?? this.color,
       targetAttendancePct: targetAttendancePct ?? this.targetAttendancePct,
+      facultyName: facultyName ?? this.facultyName,
     );
   }
 
@@ -295,6 +350,9 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
         targetAttendancePct.value,
       );
     }
+    if (facultyName.present) {
+      map['faculty_name'] = Variable<String>(facultyName.value);
+    }
     return map;
   }
 
@@ -304,7 +362,8 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('color: $color, ')
-          ..write('targetAttendancePct: $targetAttendancePct')
+          ..write('targetAttendancePct: $targetAttendancePct, ')
+          ..write('facultyName: $facultyName')
           ..write(')'))
         .toString();
   }
@@ -1680,12 +1739,14 @@ typedef $$SubjectsTableCreateCompanionBuilder = SubjectsCompanion Function({
   required String name,
   required int color,
   Value<double> targetAttendancePct,
+  Value<String?> facultyName,
 });
 typedef $$SubjectsTableUpdateCompanionBuilder = SubjectsCompanion Function({
   Value<int> id,
   Value<String> name,
   Value<int> color,
   Value<double> targetAttendancePct,
+  Value<String?> facultyName,
 });
 
 final class $$SubjectsTableReferences
@@ -1739,6 +1800,11 @@ class $$SubjectsTableFilterComposer
 
   ColumnFilters<double> get targetAttendancePct => $composableBuilder(
     column: $table.targetAttendancePct,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get facultyName => $composableBuilder(
+    column: $table.facultyName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1796,6 +1862,11 @@ class $$SubjectsTableOrderingComposer
     column: $table.targetAttendancePct,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get facultyName => $composableBuilder(
+    column: $table.facultyName,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SubjectsTableAnnotationComposer
@@ -1818,6 +1889,11 @@ class $$SubjectsTableAnnotationComposer
 
   GeneratedColumn<double> get targetAttendancePct => $composableBuilder(
     column: $table.targetAttendancePct,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get facultyName => $composableBuilder(
+    column: $table.facultyName,
     builder: (column) => column,
   );
 
@@ -1879,11 +1955,13 @@ class $$SubjectsTableTableManager
                 Value<String> name = const Value.absent(),
                 Value<int> color = const Value.absent(),
                 Value<double> targetAttendancePct = const Value.absent(),
+                Value<String?> facultyName = const Value.absent(),
               }) => SubjectsCompanion(
                 id: id,
                 name: name,
                 color: color,
                 targetAttendancePct: targetAttendancePct,
+                facultyName: facultyName,
               ),
           createCompanionCallback:
               ({
@@ -1891,11 +1969,13 @@ class $$SubjectsTableTableManager
                 required String name,
                 required int color,
                 Value<double> targetAttendancePct = const Value.absent(),
+                Value<String?> facultyName = const Value.absent(),
               }) => SubjectsCompanion.insert(
                 id: id,
                 name: name,
                 color: color,
                 targetAttendancePct: targetAttendancePct,
+                facultyName: facultyName,
               ),
           withReferenceMapper: (p0) => p0
               .map(

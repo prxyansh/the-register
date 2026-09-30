@@ -244,7 +244,13 @@ class _TodayClassCard extends StatelessWidget {
     return RegisterRow(
       time: entry.startTime, // the spec uses "09:00", so 24h format fits
       title: subject?.name ?? 'Unknown Subject',
-      subtitle: venue?.name,
+      subtitle: [
+        if (subject?.facultyName != null && subject!.facultyName!.isNotEmpty) subject!.facultyName!,
+        if (venue?.name != null && venue!.name.isNotEmpty) venue!.name,
+      ].join(' • ').isNotEmpty ? [
+        if (subject?.facultyName != null && subject!.facultyName!.isNotEmpty) subject!.facultyName!,
+        if (venue?.name != null && venue!.name.isNotEmpty) venue!.name,
+      ].join(' • ') : null,
       status: _determineStatus(),
       progress: _calculateProgress(),
       onTap: record != null

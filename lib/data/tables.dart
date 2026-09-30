@@ -8,6 +8,7 @@ class Subjects extends Table {
   IntColumn get color => integer()(); // Color value stored as int (e.g. 0xFF4CAF50)
   RealColumn get targetAttendancePct =>
       real().withDefault(const Constant(75.0))(); // Default 75%
+  TextColumn get facultyName => text().nullable()(); // Optional faculty name
 }
 
 /// Venues table — SPEC.md §4

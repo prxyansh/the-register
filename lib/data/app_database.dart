@@ -19,5 +19,15 @@ class AppDatabase extends _$AppDatabase {
       : super(executor ?? driftDatabase(name: 'attendance_tracker'));
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (Migrator m) => m.createAll(),
+        onUpgrade: (Migrator m, int from, int to) async {
+          if (from < 2) {
+            await m.addColumn(subjects, subjects.facultyName);
+          }
+        },
+      );
 }
