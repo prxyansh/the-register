@@ -1,0 +1,73 @@
+name: attendance_tracker
+description: "Auto Attendance Tracker — personal self-tracking app using GPS geofencing."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Database — Drift (SQLite wrapper)
+  drift: ^2.35.0
+  drift_flutter: ^0.3.0
+  sqlite3_flutter_libs: ^0.6.0
+
+  # State management — Riverpod
+  flutter_riverpod: ^2.6.1
+
+  # Location & geofencing
+  geolocator: ^13.0.2
+
+  # Background task scheduling
+  workmanager: ^0.10.10
+
+  # Permissions
+  permission_handler: ^11.4.0
+
+  # File sharing / export
+  share_plus: ^10.1.4
+
+  # File paths
+  path_provider: ^2.1.5
+
+  # Date/time formatting
+  intl: ^0.20.2
+  shared_preferences: ^2.5.5
+
+  # WiFi SSID detection (multi-signal fusion — Task 5)
+  network_info_plus: ^6.1.4
+
+  # Accelerometer / motion state (multi-signal fusion — Task 5)
+  sensors_plus: ^6.1.2
+  google_fonts: ^9.0.0
+  flutter_map: ^8.3.2
+  latlong2: ^0.10.1
+  file_selector: ^1.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+  # Drift code generation
+  drift_dev: ^2.35.0
+  build_runner: ^2.16.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false
+  image_path: "assets/icon.png"
+  adaptive_icon_background: "#F8F7F2"
+  adaptive_icon_foreground: "assets/icon.png"
+  min_sdk_android: 21 
+
+flutter:
+  uses-material-design: true
