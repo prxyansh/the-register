@@ -126,7 +126,16 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
       },
     );
   }
-  Future<bool?> _askClearTimetable(BuildContext context) async {
+  Future<bool?> _askClearTimetable(BuildContext context, WidgetRef ref) async {
+    final db = ref.read(databaseProvider);
+    final subjects = await db.subjectsDao.getAllSubjects();
+    final entries = await db.timetableEntriesDao.getAllEntries();
+    
+    // If the database is completely empty, don't ask to clear it
+    if (subjects.isEmpty && entries.isEmpty) {
+      return false; // implicitly "keep existing" since there is nothing to clear
+    }
+
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -178,7 +187,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 onPressed: () async {
                   Navigator.pop(dialogContext);
                   
-                  final clearExisting = await _askClearTimetable(context);
+                  final clearExisting = await _askClearTimetable(context, ref);
                   if (clearExisting == null) return; // Cancelled
                   
                   final db = ref.read(databaseProvider);
@@ -217,7 +226,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 if (code.isEmpty) return;
                 Navigator.pop(dialogContext);
                 
-                final clearExisting = await _askClearTimetable(context);
+                final clearExisting = await _askClearTimetable(context, ref);
                 if (clearExisting == null) return; // Cancelled
                 
                 final db = ref.read(databaseProvider);
