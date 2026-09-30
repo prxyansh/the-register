@@ -159,7 +159,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                     final count = await service.importFromJsonFile();
                     if (count > 0 && context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Imported $count classes successfully')),
+                        SnackBar(content: Text('Successfully imported $count classes!')),
                       );
                       ref.invalidate(allSubjectsProvider);
                       ref.invalidate(allTimetableEntriesProvider);
@@ -167,7 +167,10 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Import failed. Invalid file.')),
+                        const SnackBar(
+                          content: Text('Import failed! Invalid JSON format. Check the "AI Import Guide" in Settings.'),
+                          duration: Duration(seconds: 4),
+                        ),
                       );
                     }
                   }
@@ -191,7 +194,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                   final count = await service.importFromCode(code);
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Imported $count classes successfully')),
+                      SnackBar(content: Text('Successfully imported $count classes!')),
                     );
                     ref.invalidate(allSubjectsProvider);
                     ref.invalidate(allTimetableEntriesProvider);
@@ -199,7 +202,10 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Import failed. Invalid code.')),
+                      const SnackBar(
+                        content: Text('Import failed! Invalid format. Check the "AI Import Guide" in Settings.'),
+                        duration: Duration(seconds: 4),
+                      ),
                     );
                   }
                 }
