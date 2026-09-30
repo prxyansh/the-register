@@ -1,4 +1,4 @@
-# The Register 📇
+# The Register
 
 > A minimalist, privacy-first attendance tracking app engineered with precision.
 
@@ -8,7 +8,7 @@ Crafted strictly for students who want a beautiful, automated way to track their
 
 ---
 
-## ✨ Features
+## // Features
 
 - **100% Offline & Private:** Built on top of local Drift SQLite. Your location data and schedule never leave your device. Zero cloud analytics. Zero API keys.
 - **Smart Automation:** Background tracking fuses GPS coordinates and specific Campus WiFi SSIDs to accurately detect when you are physically sitting in a lecture hall.
@@ -16,14 +16,14 @@ Crafted strictly for students who want a beautiful, automated way to track their
 - **Timetable Sharing:** Export and share your entire semester's timetable with classmates using base64 share codes or JSON files.
 - **"Ledger" Aesthetic:** Designed around the IBM Plex font family, utilizing hairline borders, high-contrast monochrome tones, and mechanical animations.
 
-## 📸 Aesthetic Philosophy
+## // Aesthetic Philosophy
 
 The app is built around the **"Register"** design language:
 - **Colors:** Ink black, stark white, cream (`#F8F7F2`), and a single striking red accent (`#E53935`).
 - **Typography:** IBM Plex Sans for modern legibility, IBM Plex Mono for data. 
 - **Motion:** Micro-animations mimic physical mechanics (rubber stamps pressing down, split-flap numbers rotating).
 
-## 🚀 Getting Started
+## // Getting Started
 
 To build and run this project, you will need to have [Flutter](https://flutter.dev/docs/get-started/install) installed on your machine.
 
@@ -48,7 +48,7 @@ To build and run this project, you will need to have [Flutter](https://flutter.d
    flutter build apk --release --split-per-abi
    ```
 
-## 🛠 Tech Stack
+## // Tech Stack
 
 - **Framework:** Flutter (Dart)
 - **State Management:** Riverpod
@@ -56,7 +56,7 @@ To build and run this project, you will need to have [Flutter](https://flutter.d
 - **Mapping:** `flutter_map` (OpenStreetMap tiles) & `latlong2`
 - **Location & Sensors:** `geolocator`, `network_info_plus`, `sensors_plus`
 
-## 📄 License
+## // License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
