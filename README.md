@@ -2,17 +2,32 @@
 
 > A highly accurate, privacy-first, offline attendance tracking application.
 
-**The Register** is a Flutter-based attendance tracking system engineered for precision and automation. It allows students to reliably track their classes locally on their devices, ensuring maximum privacy without relying on cloud services or external APIs.
+---
+
+## // The Problem (Why another attendance tracker?)
+
+There are hundreds of attendance tracking apps on the app stores. However, almost all of them suffer from three critical flaws:
+1. **Manual Entry Fatigue:** You have to remember to open the app and click a button every single time you attend a class. If you forget, your data is completely ruined.
+2. **Invasive Privacy Practices:** The few apps that *do* offer automated tracking upload your highly sensitive, minute-by-minute physical GPS location to remote cloud servers.
+3. **Paywalls & Ads:** Core features like timetables and data export are locked behind subscriptions or flooded with advertisements.
+
+## // Why "The Register"?
+
+**The Register** was engineered specifically to solve these problems for students. It is a true "set it and forget it" system built on a foundation of absolute privacy.
+
+By fusing your device's background GPS coordinates with specific Campus WiFi SSIDs, the app **automatically detects** when you are physically sitting in a lecture hall and logs your attendance silently in the background.
+
+Most importantly: **Your data never leaves your phone.** There are no cloud servers, no analytics trackers, and zero API keys. Everything is stored locally on your device via Drift SQLite. 
 
 ---
 
 ## // Core Features
 
-- **High-Accuracy Smart Automation:** Background tracking fuses GPS coordinates and specific Campus WiFi SSIDs to accurately detect when you are physically sitting in a lecture hall.
-- **100% Offline & Private:** Built on top of local Drift SQLite. Your location data and schedule never leave your device. Zero cloud analytics. Zero API keys.
-- **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface. Navigate and set accurate radii for geofencing without Google Maps API keys.
+- **High-Accuracy Smart Automation:** Background tracking intelligently fuses GPS data and WiFi networks to ensure you never miss logging a class.
+- **100% Offline & Private:** Zero cloud analytics. Zero API keys. Total ownership of your data.
+- **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface without relying on proprietary Google Maps APIs.
 - **Timetable Sharing & Export:** Export and share your entire semester's timetable with classmates using base64 share codes or direct JSON file transfers.
-- **Automated Background Checks:** Relies on robust Android background services to periodically check location and network state, ensuring you never miss logging a class.
+- **Battery Efficient:** Relies on optimized Android background services (`WorkManager`) to periodically check location state without draining your battery.
 
 ## // Getting Started
 
