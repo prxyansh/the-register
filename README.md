@@ -1,6 +1,6 @@
 # The Register
 
-> A highly accurate, privacy-first, brutalist, offline attendance tracking application.
+> A highly accurate, privacy-first, brutalist, **fully automatic**, offline attendance tracking application.
 
 ![Release](https://img.shields.io/badge/Release-v1.0.0-black?style=for-the-badge)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?style=for-the-badge&logo=flutter)
