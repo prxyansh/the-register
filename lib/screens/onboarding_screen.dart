@@ -16,7 +16,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  static const int _totalPages = 3;
+  static const int _totalPages = 4;
 
   @override
   void dispose() {
@@ -98,6 +98,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         'No tracking outside class hours. No data leaves '
                         'your phone. Everything stays local.',
                   ),
+                  _buildTutorialPage(context),
                 ],
               ),
             ),
@@ -203,6 +204,120 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               height: 1.6,
             ),
             textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTutorialPage(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(Icons.help_outline_rounded, size: 40, color: colorScheme.primary),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'How It Works',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          Expanded(
+            child: ListView(
+              children: [
+                _buildTutorialStep(
+                  context,
+                  number: '1',
+                  title: 'Import Timetable',
+                  body: 'Use the AI prompt in Settings to convert a picture of your schedule into a JSON file, then import it.',
+                ),
+                _buildTutorialStep(
+                  context,
+                  number: '2',
+                  title: 'Set Venues',
+                  body: 'Go to the Venues tab and pin the exact location and campus WiFi for each classroom.',
+                ),
+                _buildTutorialStep(
+                  context,
+                  number: '3',
+                  title: 'Grant Permissions',
+                  body: 'Allow background location so the app can detect when you enter a venue.',
+                ),
+                _buildTutorialStep(
+                  context,
+                  number: '4',
+                  title: 'Start Tracking',
+                  body: 'Enable tracking in Settings. The app will silently log your attendance in the background.',
+                ),
+                _buildTutorialStep(
+                  context,
+                  number: '5',
+                  title: 'Check Stats',
+                  body: 'Open the Reports tab to see your overall attendance percentages.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTutorialStep(BuildContext context, {required String number, required String title, required String body}) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              number,
+              style: TextStyle(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
