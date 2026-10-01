@@ -1,6 +1,11 @@
-# The Register
+# The Register ⬛
 
-> A highly accurate, privacy-first, offline attendance tracking application.
+> **A highly accurate, privacy-first, brutalist, offline attendance tracking application.**
+
+![Release](https://img.shields.io/badge/Release-v1.0.0-black?style=for-the-badge)
+![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?style=for-the-badge&logo=flutter)
+![Platform](https://img.shields.io/badge/Platform-Android-green?style=for-the-badge&logo=android)
+![License](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)
 
 ---
 
@@ -13,21 +18,26 @@ There are hundreds of attendance tracking apps on the app stores. However, almos
 
 ## // Why "The Register"?
 
-**The Register** was engineered specifically to solve these problems for students. It is a true "set it and forget it" system built on a foundation of absolute privacy.
+**The Register** was engineered specifically to solve these problems for students. It is a true "set it and forget it" system built on a foundation of absolute privacy, wrapped in a heavy, high-contrast **brutalist aesthetic**.
 
-By fusing your device's background GPS coordinates with specific Campus WiFi SSIDs, the app **automatically detects** when you are physically sitting in a lecture hall and logs your attendance silently in the background.
+By fusing your device's background GPS coordinates with specific Campus WiFi SSIDs, the app **automatically detects** when you are physically sitting in a lecture hall and logs your attendance silently in the background. 
 
 Most importantly: **Your data never leaves your phone.** There are no cloud servers, no analytics trackers, and zero API keys. Everything is stored locally on your device via Drift SQLite. 
 
 ---
 
-## // Core Features
+## // Core Features (v1.0.0)
 
-- **High-Accuracy Smart Automation:** Background tracking intelligently fuses GPS data and WiFi networks to ensure you never miss logging a class.
-- **100% Offline & Private:** Zero cloud analytics. Zero API keys. Total ownership of your data.
-- **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface without relying on proprietary Google Maps APIs.
-- **Timetable Sharing & Export:** Export and share your entire semester's timetable with classmates using base64 share codes or direct JSON file transfers.
-- **Battery Efficient:** Relies on optimized Android background services (`WorkManager`) to periodically check location state without draining your battery.
+- 📍 **High-Accuracy Smart Automation:** Background tracking intelligently fuses GPS data and WiFi networks to ensure you never miss logging a class.
+- 🛡️ **100% Offline & Private:** Zero cloud analytics. Zero API keys. Total ownership of your data.
+- 🔋 **Doze-Proof Battery Resilience:** Android's aggressive background-killing mechanics are bypassed natively. The app dynamically schedules checks and requests `IGNORE_BATTERY_OPTIMIZATIONS` so you never miss a tick.
+- ✋ **Universal Manual Overrides:** If your phone dies, you can manually tap any class on the *Today* screen to retroactively mark yourself as Present, Absent, Sick, or Cancelled.
+- 🗺️ **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface without relying on proprietary Google Maps APIs.
+- 📤 **AI Timetable Sharing & Export:** Export and share your entire semester's timetable with classmates using base64 share codes, or use the built-in AI Prompt Guide to instantly generate your timetable JSON via ChatGPT/Claude.
+- 📳 **Heavy Haptics & Brutalist UX:** Thick borders, monospaced typography, stark empty states, and aggressive haptic feedback that makes every interaction feel premium and tactile.
+- 🌍 **Dynamic Timezones:** Automatic calculation of local timezones ensuring that international students or remote workers never get the wrong notification time.
+
+---
 
 ## // Getting Started
 
@@ -51,7 +61,7 @@ To build and run this project, you will need to have [Flutter](https://flutter.d
 
 4. **Build the optimized Android Release APK:**
    ```bash
-   flutter build apk --release --split-per-abi
+   flutter build apk --release
    ```
 
 ## // Tech Stack
@@ -60,6 +70,7 @@ To build and run this project, you will need to have [Flutter](https://flutter.d
 - **State Management:** Riverpod
 - **Database:** Drift (SQLite)
 - **Mapping:** `flutter_map` (OpenStreetMap tiles) & `latlong2`
+- **Background Execution:** `workmanager`, `permission_handler`
 - **Location & Sensors:** `geolocator`, `network_info_plus`, `sensors_plus`
 
 ## // License
