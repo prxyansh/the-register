@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'theme/register_theme.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/today_screen.dart';
+import 'screens/calendar_screen.dart';
 import 'screens/timetable_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/settings_screen.dart';
@@ -136,6 +137,7 @@ class _MainShellState extends State<_MainShell> {
 
   static const _screens = <Widget>[
     TodayScreen(),
+    CalendarScreen(),
     TimetableScreen(),
     ReportsScreen(),
     SettingsScreen(),
@@ -158,6 +160,11 @@ class _MainShellState extends State<_MainShell> {
             icon: Icon(Icons.today_rounded),
             selectedIcon: Icon(Icons.today),
             label: 'Today',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.date_range_outlined),
+            selectedIcon: Icon(Icons.date_range),
+            label: 'Calendar',
           ),
           NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),

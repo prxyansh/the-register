@@ -58,3 +58,10 @@ final todayRecordsProvider = StreamProvider<List<AttendanceRecord>>((ref) {
 final allRecordsProvider = StreamProvider<List<AttendanceRecord>>((ref) {
   return ref.watch(attendanceRecordsDaoProvider).watchAllRecords();
 });
+
+/// Reactive stream of attendance records for a specific month (for Calendar).
+final recordsForMonthProvider = StreamProvider.family<List<AttendanceRecord>, DateTime>((ref, month) {
+  final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 1);
+  return ref.watch(attendanceRecordsDaoProvider).watchRecordsForDateRange(start, end);
+});

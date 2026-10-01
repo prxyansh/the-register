@@ -40,6 +40,15 @@ class AttendanceRecordsDao extends DatabaseAccessor<AppDatabase>
         .watch();
   }
 
+  /// Watch records for a specific date range (for Calendar screen).
+  Stream<List<AttendanceRecord>> watchRecordsForDateRange(DateTime start, DateTime end) {
+    return (select(attendanceRecords)
+          ..where((r) =>
+              r.date.isBiggerOrEqualValue(start) &
+              r.date.isSmallerThanValue(end)))
+        .watch();
+  }
+
   /// Get all records for a specific timetable entry (for reports).
   Future<List<AttendanceRecord>> getRecordsForEntry(int timetableEntryId) =>
       (select(attendanceRecords)
