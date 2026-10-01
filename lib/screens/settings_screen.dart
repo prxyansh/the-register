@@ -294,7 +294,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showAIGuideDialog(BuildContext context) {
-    const promptText = '''Please read this timetable image and convert it into the following strict JSON format. Do not add any text before or after the JSON block.
+    const promptText = '''Please read this timetable image and convert it into the following strict JSON format. 
+IMPORTANT: DO NOT just output the JSON code in the chat. Please generate and provide a downloadable `.json` file containing this data.
 
 ```json
 {
