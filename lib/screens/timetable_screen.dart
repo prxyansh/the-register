@@ -195,6 +195,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                   try {
                     final count = await service.importFromJsonFile(clearExisting: clearExisting);
                     if (count > 0 && context.mounted) {
+                      HapticFeedback.heavyImpact();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(content: Text('Successfully imported $count classes!')),
                       );
@@ -203,6 +204,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                     }
                   } catch (e) {
                     if (context.mounted) {
+                      HapticFeedback.vibrate();
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Import failed! Invalid JSON format. Check the "AI Import Guide" in Settings.'),
@@ -333,21 +335,34 @@ class _SubjectsTab extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.book_outlined,
-                    size: 64,
-                    color: theme.colorScheme.outlineVariant,
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: theme.colorScheme.outline, width: 4),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.book_rounded,
+                      size: 48,
+                      color: theme.colorScheme.outline,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'TIMETABLE EMPTY.\nIMPORT JSON.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                      color: theme.colorScheme.onSurface,
+                      height: 1.4,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'No subjects yet',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap the + button to add your first subject',
+                    'Or add subjects manually using the + button.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.outline,
                     ),
@@ -540,25 +555,30 @@ class _ClassesTab extends ConsumerWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: 64,
-                        color: theme.colorScheme.outlineVariant,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No classes scheduled',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                      Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.outline, width: 4),
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Add subjects first, then schedule your classes',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.calendar_today_rounded,
+                          size: 48,
                           color: theme.colorScheme.outline,
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'NO CLASSES\nSCHEDULED.',
                         textAlign: TextAlign.center,
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                          color: theme.colorScheme.onSurface,
+                          height: 1.4,
+                        ),
                       ),
                     ],
                   ),

@@ -28,21 +28,34 @@ class VenuesScreen extends ConsumerWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.location_off_rounded,
-                      size: 64,
-                      color: theme.colorScheme.outlineVariant,
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: theme.colorScheme.outline, width: 4),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.location_off_rounded,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'NO VENUES SET.\nADD ONE.',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        color: theme.colorScheme.onSurface,
+                        height: 1.4,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No venues yet',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Add a venue to start tracking attendance\nby location',
+                      'Pin your classroom locations and WiFi to enable auto-tracking.',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.outline,
                       ),

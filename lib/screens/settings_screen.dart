@@ -65,6 +65,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _toggleTracking(bool value) async {
+    HapticFeedback.heavyImpact();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('tracking_active', value);
     setState(() => _trackingActive = value);

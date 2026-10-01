@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../data/app_database.dart';
@@ -7,6 +8,14 @@ import '../data/attendance_status.dart';
 import '../theme/register_theme.dart';
 import '../widgets/register_row.dart';
 import 'record_detail_screen.dart';
+
+import '../services/location_service.dart';
+
+final locationPermissionsProvider = FutureProvider.autoDispose<bool>((ref) async {
+  final fg = await LocationService.hasForegroundPermission();
+  final bg = await LocationService.hasBackgroundPermission();
+  return fg && bg;
+});
 
 /// Home / Today screen — SPEC.md §10, Screen 4.
 ///
@@ -41,7 +50,35 @@ class TodayScreen extends ConsumerWidget {
           ],
         ),
       ),
-      body: entriesAsync.when(
+      body: Column(
+        children: [
+          Consumer(
+            builder: (context, ref, child) {
+              final permissionsAsync = ref.watch(locationPermissionsProvider);
+              return permissionsAsync.when(
+                data: (hasPermissions) {
+                  if (hasPermissions) return const SizedBox.shrink();
+                  return Container(
+                    width: double.infinity,
+                    color: theme.colorScheme.error,
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    child: Text(
+                      'Warning: Location permissions are missing. Auto-tracking is paused.',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onError,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              );
+            },
+          ),
+          Expanded(
+            child: entriesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (entries) {
@@ -88,36 +125,45 @@ class TodayScreen extends ConsumerWidget {
           );
         },
       ),
+    ),
+    ],
+    ),
     );
   }
 
   Widget _buildNoClassesView(ThemeData theme, DateTime now) {
-    final dayName = DateFormat('EEEE').format(now);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              Icons.weekend_rounded,
-              size: 80,
-              color: theme.colorScheme.outlineVariant,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No classes today',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.colorScheme.outline, width: 4),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Enjoy your $dayName!',
-              style: theme.textTheme.bodyLarge?.copyWith(
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.weekend_rounded,
+                size: 48,
                 color: theme.colorScheme.outline,
               ),
             ),
+            const SizedBox(height: 24),
+            Text(
+              'NO CLASSES TODAY.\nGO TOUCH GRASS.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2,
+                color: theme.colorScheme.onSurface,
+                height: 1.4,
+              ),
+            ),
+
           ],
         ),
       ),
@@ -224,7 +270,7 @@ class _SummaryItem extends StatelessWidget {
 }
 
 /// Row showing a single class for today with live status via RegisterRow.
-class _TodayClassCard extends StatelessWidget {
+class _TodayClassCard extends ConsumerWidget {
   final TimetableEntry entry;
   final Subject? subject;
   final AttendanceRecord? record;
@@ -240,7 +286,7 @@ class _TodayClassCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return RegisterRow(
       time: entry.startTime, // the spec uses "09:00", so 24h format fits
       title: subject?.name ?? 'Unknown Subject',
@@ -253,18 +299,35 @@ class _TodayClassCard extends StatelessWidget {
       ].join(' • ') : null,
       status: _determineStatus(),
       progress: _calculateProgress(),
-      onTap: record != null
-          ? () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => RecordDetailScreen(
-                    record: record!,
-                    subject: subject,
-                    entry: entry,
-                  ),
-                ),
-              )
-          : null,
+      onTap: () async {
+        HapticFeedback.selectionClick();
+        var currentRecord = record;
+        if (currentRecord == null) {
+          // create a dummy pending record for manual override
+          final dao = ref.read(attendanceRecordsDaoProvider);
+          final id = await dao.insertRecord(
+            AttendanceRecordsCompanion.insert(
+              timetableEntryId: entry.id,
+              date: DateTime(now.year, now.month, now.day),
+              status: AttendanceStatus.absent.toDbValue(), // Default to absent until overridden
+            ),
+          );
+          currentRecord = await dao.getRecordById(id);
+        }
+
+        if (context.mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RecordDetailScreen(
+                record: currentRecord!,
+                subject: subject,
+                entry: entry,
+              ),
+            ),
+          );
+        }
+      },
     );
   }
 

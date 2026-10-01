@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../services/location_service.dart';
 import '../services/background_scheduler.dart';
 
@@ -20,7 +21,7 @@ class PermissionSetupScreen extends StatefulWidget {
 }
 
 class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
-  int _step = 0; // 0=intro, 1=requesting foreground, 2=explain bg, 3=done
+  int _step = 0; // 0=intro, 1=req fg, 2=req bg, 3=req battery, 4=done
   bool _foregroundGranted = false;
   bool _backgroundGranted = false;
   bool _isRequesting = false;
@@ -35,7 +36,12 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
     _foregroundGranted = await LocationService.hasForegroundPermission();
     _backgroundGranted = await LocationService.hasBackgroundPermission();
     if (_foregroundGranted && _backgroundGranted) {
-      _step = 3;
+      final isBatteryIgnored = await Permission.ignoreBatteryOptimizations.isGranted;
+      if (isBatteryIgnored) {
+        _step = 4;
+      } else {
+        _step = 3;
+      }
     } else if (_foregroundGranted) {
       _step = 2;
     }
@@ -72,10 +78,60 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
       case 2:
         return _buildExplainBackground(theme);
       case 3:
+        return _buildBatteryOptimization(theme);
+      case 4:
         return _buildDone(theme);
       default:
         return const SizedBox.shrink();
     }
+  }
+
+  Widget _buildBatteryOptimization(ThemeData theme) {
+    return Column(
+      key: const ValueKey(3),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.battery_alert_rounded,
+          size: 80,
+          color: theme.colorScheme.error,
+        ),
+        const SizedBox(height: 24),
+        Text(
+          'Unrestricted Battery',
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Android puts background apps to sleep to save battery. '
+          'To ensure the auto-tracker never misses a class, you MUST '
+          'allow unrestricted battery usage.',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 32),
+        FilledButton.icon(
+          onPressed: () async {
+            await Permission.ignoreBatteryOptimizations.request();
+            setState(() {
+              _step = 4;
+            });
+          },
+          icon: const Icon(Icons.settings_suggest_rounded),
+          label: const Text('Allow Background Execution'),
+        ),
+        const SizedBox(height: 12),
+        TextButton(
+          onPressed: () => setState(() => _step = 4),
+          child: const Text('Skip for now'),
+        ),
+      ],
+    );
   }
 
   Widget _buildIntro(ThemeData theme) {
@@ -254,7 +310,7 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
 
   Widget _buildDone(ThemeData theme) {
     return Column(
-      key: const ValueKey(3),
+      key: const ValueKey(4),
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Icon(
@@ -313,11 +369,12 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
     setState(() => _isRequesting = true);
 
     _backgroundGranted = await LocationService.requestBackgroundPermission();
+    final isBatteryIgnored = await Permission.ignoreBatteryOptimizations.isGranted;
 
     if (mounted) {
       setState(() {
         _isRequesting = false;
-        _step = 3;
+        _step = isBatteryIgnored ? 4 : 3;
       });
     }
   }

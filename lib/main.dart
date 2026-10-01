@@ -63,10 +63,24 @@ class _AppStartupState extends State<_AppStartup> {
 
   Future<void> _checkState() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
-      _permissionsSetup = prefs.getBool('permissions_setup') ?? false;
-    });
+    
+    final onboardingComplete = prefs.getBool('onboarding_complete') ?? false;
+    final permissionsSetup = prefs.getBool('permissions_setup') ?? false;
+    
+    if (permissionsSetup) {
+      final trackingActive = prefs.getBool('tracking_active') ?? true;
+      if (trackingActive) {
+        // Replenish alarms for the day on app launch (fixes reboot amnesia)
+        await BackgroundScheduler.scheduleChecksForToday();
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _onboardingComplete = onboardingComplete;
+        _permissionsSetup = permissionsSetup;
+      });
+    }
   }
 
   Future<void> _completeOnboarding() async {

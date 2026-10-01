@@ -11,6 +11,8 @@
     <!-- Internet permission for map tiles -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Battery optimization bypass -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <application
         android:label="The Register"
         android:name="${applicationName}"
