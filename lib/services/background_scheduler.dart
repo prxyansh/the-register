@@ -1,8 +1,11 @@
 import 'package:workmanager/workmanager.dart';
+import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import '../data/app_database.dart';
+import '../data/attendance_status.dart';
 import '../domain/adaptive_schedule.dart';
 import 'attendance_checker.dart';
+import 'notification_service.dart';
 
 /// Task names for WorkManager.
 const kAttendanceCheckTask = 'attendance_check';
@@ -113,10 +116,47 @@ class BackgroundScheduler {
             existingWorkPolicy: ExistingWorkPolicy.keep,
           );
         }
+
+        // --- Schedule class reminder notification (15 min before) ---
+        final subject = await db.subjectsDao.getSubjectById(entry.subjectId);
+        await NotificationService.scheduleClassReminder(
+          entryId: entry.id,
+          subjectName: subject.name,
+          startTime: entry.startTime,
+          classDateTime: classStart,
+        );
       }
+
+      // --- Schedule night-before summary for tomorrow ---
+      await _scheduleNightBeforeSummary(db, now);
     } finally {
       await db.close();
     }
+  }
+
+  /// Schedule a 9 PM notification summarizing tomorrow's classes.
+  static Future<void> _scheduleNightBeforeSummary(
+      AppDatabase db, DateTime now) async {
+    // Tomorrow's weekday (ISO 8601: 1=Mon, 7=Sun)
+    final tomorrowWeekday = now.weekday == 7 ? 1 : now.weekday + 1;
+    final tomorrowEntries =
+        await db.timetableEntriesDao.getEntriesForDay(tomorrowWeekday);
+
+    if (tomorrowEntries.isEmpty) return;
+
+    final classList = <Map<String, String>>[];
+    for (final entry in tomorrowEntries) {
+      final subject =
+          await db.subjectsDao.getSubjectById(entry.subjectId);
+      classList.add({
+        'name': subject.name,
+        'time': entry.startTime,
+      });
+    }
+
+    await NotificationService.scheduleNightBeforeSummary(
+      tomorrowClasses: classList,
+    );
   }
 }
 
@@ -145,6 +185,36 @@ void callbackDispatcher() {
                 await db.timetableEntriesDao.getEntryById(entryId);
             final checker = AttendanceChecker(db);
             await checker.performCheck(entry);
+
+            // Send attendance notification
+            try {
+              final today = DateTime.now();
+              final startOfDay =
+                  DateTime(today.year, today.month, today.day);
+              final endOfDay = startOfDay.add(const Duration(days: 1));
+              final records = await (db.select(db.attendanceRecords)
+                    ..where((r) =>
+                        r.timetableEntryId.equals(entry.id) &
+                        r.date.isBiggerOrEqualValue(startOfDay) &
+                        r.date.isSmallerThanValue(endOfDay)))
+                  .get();
+              if (records.isNotEmpty) {
+                final record = records.first;
+                final status =
+                    AttendanceStatus.fromDbValue(record.status);
+                if (status == AttendanceStatus.present ||
+                    status == AttendanceStatus.absent) {
+                  final subject = await db.subjectsDao
+                      .getSubjectById(entry.subjectId);
+                  await NotificationService.showAttendanceMarked(
+                    subjectName: subject.name,
+                    status: record.status,
+                  );
+                }
+              }
+            } catch (_) {
+              // Non-critical — don't fail the check
+            }
           }
           break;
       }

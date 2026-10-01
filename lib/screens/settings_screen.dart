@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import '../data/providers.dart';
 import '../services/backup_service.dart';
+import '../services/background_scheduler.dart';
+import '../services/notification_service.dart';
 
 /// Settings screen — SPEC.md §10, Screen 7.
 ///
@@ -22,11 +24,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _exporting = false;
   bool _importing = false;
   String? _lastExportDate;
+  bool _trackingActive = true;
 
   @override
   void initState() {
     super.initState();
     _loadLastExportDate();
+    _loadTrackingState();
   }
 
   Future<void> _loadLastExportDate() async {
@@ -51,6 +55,71 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (_) {
       return true;
     }
+  }
+
+  Future<void> _loadTrackingState() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _trackingActive = prefs.getBool('tracking_active') ?? true;
+    });
+  }
+
+  Future<void> _toggleTracking(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('tracking_active', value);
+    setState(() => _trackingActive = value);
+
+    if (value) {
+      await BackgroundScheduler.initialize();
+      await BackgroundScheduler.scheduleDailyPlanner();
+      await BackgroundScheduler.scheduleChecksForToday();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tracking started. Attendance checks are now active.')),
+        );
+      }
+    } else {
+      await BackgroundScheduler.cancelAll();
+      await NotificationService.cancelAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tracking paused. No background checks will run.')),
+        );
+      }
+    }
+  }
+
+  void _showHowItWorksDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('How It Works'),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _TutorialStep(number: '1', title: 'Import Your Timetable',
+                  body: 'Go to the Timetable tab → tap the menu → Import JSON. Use the AI Import Guide in Settings to generate a JSON from your timetable image.'),
+              _TutorialStep(number: '2', title: 'Set Your Venues',
+                  body: 'For each class, tap to edit and set the venue (classroom GPS location). This is how the app knows where to check.'),
+              _TutorialStep(number: '3', title: 'Grant Permissions',
+                  body: 'Allow location access (foreground + background) so the app can check if you\'re in class automatically.'),
+              _TutorialStep(number: '4', title: 'Start Tracking',
+                  body: 'Make sure tracking is turned ON in Settings. The app will now automatically run GPS checks during your class times.'),
+              _TutorialStep(number: '5', title: 'Check Your Stats',
+                  body: 'Visit the Today tab to see live class status, and the Reports tab for your overall attendance percentages.'),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Got it!'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _exportJson() async {
@@ -316,6 +385,47 @@ Notes for AI:
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
         children: [
+          // Tracking toggle card
+          Card(
+            color: _trackingActive
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : theme.colorScheme.surfaceContainerHighest,
+            margin: const EdgeInsets.only(bottom: 16),
+            child: ListTile(
+              leading: Icon(
+                _trackingActive
+                    ? Icons.gps_fixed_rounded
+                    : Icons.gps_off_rounded,
+                color: _trackingActive
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outline,
+              ),
+              title: Text(
+                _trackingActive ? 'Tracking Active' : 'Tracking Paused',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: _trackingActive
+                      ? theme.colorScheme.onPrimaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              subtitle: Text(
+                _trackingActive
+                    ? 'Background attendance checks are running'
+                    : 'No background checks — tap to start',
+                style: TextStyle(
+                  color: _trackingActive
+                      ? theme.colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
+                      : theme.colorScheme.outline,
+                ),
+              ),
+              trailing: Switch(
+                value: _trackingActive,
+                onChanged: _toggleTracking,
+              ),
+            ),
+          ),
+
           // Export reminder banner
           if (_shouldShowExportReminder)
             Card(
@@ -422,6 +532,26 @@ Notes for AI:
 
           const SizedBox(height: 24),
 
+          // Help section
+          Text(
+            'Help',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.help_outline_rounded),
+              title: const Text('How It Works'),
+              subtitle: const Text('Step-by-step guide to using the app'),
+              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
+              onTap: () => _showHowItWorksDialog(context),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // About section
           Text(
             'About',
@@ -470,6 +600,66 @@ Notes for AI:
             ),
           ),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+}
+
+/// Numbered tutorial step widget used in the How It Works dialog.
+class _TutorialStep extends StatelessWidget {
+  final String number;
+  final String title;
+  final String body;
+
+  const _TutorialStep({
+    required this.number,
+    required this.title,
+    required this.body,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              number,
+              style: TextStyle(
+                color: theme.colorScheme.onPrimary,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

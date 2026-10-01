@@ -9,12 +9,16 @@ import 'screens/reports_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/permission_setup_screen.dart';
 import 'services/background_scheduler.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize WorkManager for background geofence checks
   await BackgroundScheduler.initialize();
+
+  // Initialize notifications
+  await NotificationService.initialize();
 
   runApp(
     const ProviderScope(
