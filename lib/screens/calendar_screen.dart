@@ -266,6 +266,10 @@ class _DateCell extends ConsumerWidget {
 
     final dayRecords = records.where((r) => r.date.year == date.year && r.date.month == date.month && r.date.day == date.day).toList();
 
+    if (!isCurrentMonth) {
+      return const SizedBox.shrink();
+    }
+
     return InkWell(
       onTap: () {
         if (todayEntries.isEmpty) return;
