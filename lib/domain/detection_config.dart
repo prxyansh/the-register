@@ -4,6 +4,11 @@
 // To recalibrate after real-world testing (per §6.5), change ONLY
 // these values — no other code needs to change.
 
+// --- Grace Period (§8) ---
+// Don't count the first/last N minutes of a class window as strictly
+// required — students walking between buildings shouldn't be penalized.
+const int gracePeriodMinutes = 5;
+
 // --- Signal Weights (must sum to 1.0) ---
 
 /// GPS location match weight (primary signal).

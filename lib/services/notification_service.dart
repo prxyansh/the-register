@@ -63,8 +63,7 @@ class NotificationService {
         ),
       );
 
-      // Request notification permission on Android 13+
-      await androidPlugin.requestNotificationsPermission();
+      // Notification permissions should be requested separately, not on startup.
     }
 
     _initialized = true;
@@ -110,10 +109,11 @@ class NotificationService {
   /// Schedule a night-before summary notification at 9 PM.
   static Future<void> scheduleNightBeforeSummary({
     required List<Map<String, String>> tomorrowClasses,
+    String? calendarEvent,
   }) async {
     await initialize();
 
-    if (tomorrowClasses.isEmpty) return;
+    if (tomorrowClasses.isEmpty && calendarEvent == null) return;
 
     final now = DateTime.now();
     var ninepm = DateTime(now.year, now.month, now.day, 21, 0);
@@ -121,13 +121,21 @@ class NotificationService {
     // If it's already past 9 PM, don't schedule
     if (ninepm.isBefore(now)) return;
 
-    final classListText = tomorrowClasses
-        .map((c) => '${c['name']} (${c['time']})')
-        .join(', ');
+    String body = '';
+    
+    if (calendarEvent != null) {
+      body += 'Tomorrow: $calendarEvent.\n';
+    }
 
-    final body = tomorrowClasses.length == 1
-        ? 'You have 1 class tomorrow: $classListText'
-        : 'You have ${tomorrowClasses.length} classes tomorrow: $classListText';
+    if (tomorrowClasses.isNotEmpty) {
+      final classListText = tomorrowClasses
+          .map((c) => '${c['name']} (${c['time']})')
+          .join(', ');
+      
+      body += tomorrowClasses.length == 1
+          ? 'You have 1 class tomorrow: $classListText'
+          : 'You have ${tomorrowClasses.length} classes tomorrow: $classListText';
+    }
 
     final scheduledDate = tz.TZDateTime.from(ninepm, tz.local);
 

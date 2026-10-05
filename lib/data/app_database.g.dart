@@ -1276,14 +1276,29 @@ class $AttendanceRecordsTable extends AttendanceRecords
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  static const VerificationMeta _attendanceStatusMeta = const VerificationMeta(
+    'attendanceStatus',
+  );
   @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-    'status',
+  late final GeneratedColumn<String> attendanceStatus = GeneratedColumn<String>(
+    'attendance_status',
     aliasedName,
     false,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('unknown'),
+  );
+  static const VerificationMeta _classificationMeta = const VerificationMeta(
+    'classification',
+  );
+  @override
+  late final GeneratedColumn<String> classification = GeneratedColumn<String>(
+    'classification',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('normal'),
   );
   static const VerificationMeta _confidenceScoreMeta = const VerificationMeta(
     'confidenceScore',
@@ -1320,15 +1335,32 @@ class $AttendanceRecordsTable extends AttendanceRecords
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _autoResolvedMeta = const VerificationMeta(
+    'autoResolved',
+  );
+  @override
+  late final GeneratedColumn<bool> autoResolved = GeneratedColumn<bool>(
+    'auto_resolved',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auto_resolved" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
     timetableEntryId,
     date,
-    status,
+    attendanceStatus,
+    classification,
     confidenceScore,
     checksJson,
     overrideReason,
+    autoResolved,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1364,13 +1396,23 @@ class $AttendanceRecordsTable extends AttendanceRecords
     } else if (isInserting) {
       context.missing(_dateMeta);
     }
-    if (data.containsKey('status')) {
+    if (data.containsKey('attendance_status')) {
       context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+        _attendanceStatusMeta,
+        attendanceStatus.isAcceptableOrUnknown(
+          data['attendance_status']!,
+          _attendanceStatusMeta,
+        ),
       );
-    } else if (isInserting) {
-      context.missing(_statusMeta);
+    }
+    if (data.containsKey('classification')) {
+      context.handle(
+        _classificationMeta,
+        classification.isAcceptableOrUnknown(
+          data['classification']!,
+          _classificationMeta,
+        ),
+      );
     }
     if (data.containsKey('confidence_score')) {
       context.handle(
@@ -1396,6 +1438,15 @@ class $AttendanceRecordsTable extends AttendanceRecords
         ),
       );
     }
+    if (data.containsKey('auto_resolved')) {
+      context.handle(
+        _autoResolvedMeta,
+        autoResolved.isAcceptableOrUnknown(
+          data['auto_resolved']!,
+          _autoResolvedMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1417,9 +1468,13 @@ class $AttendanceRecordsTable extends AttendanceRecords
         DriftSqlType.dateTime,
         data['${effectivePrefix}date'],
       )!,
-      status: attachedDatabase.typeMapping.read(
+      attendanceStatus: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}status'],
+        data['${effectivePrefix}attendance_status'],
+      )!,
+      classification: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}classification'],
       )!,
       confidenceScore: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
@@ -1433,6 +1488,10 @@ class $AttendanceRecordsTable extends AttendanceRecords
         DriftSqlType.string,
         data['${effectivePrefix}override_reason'],
       ),
+      autoResolved: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auto_resolved'],
+      )!,
     );
   }
 
@@ -1447,18 +1506,31 @@ class AttendanceRecord extends DataClass
   final int id;
   final int timetableEntryId;
   final DateTime date;
-  final String status;
+
+  /// What happened — detection result or manual entry.
+  /// Values: present | absent | ambiguous | unknown
+  final String attendanceStatus;
+
+  /// Whether/how this record counts toward attendance %.
+  /// Values: normal | cancelled | holiday | excused | extra_session
+  final String classification;
   final double confidenceScore;
   final String checksJson;
   final String? overrideReason;
+
+  /// Whether this record was auto-resolved from ambiguous/unknown
+  /// after the 48-hour timeout (§5). Visually distinct in UI.
+  final bool autoResolved;
   const AttendanceRecord({
     required this.id,
     required this.timetableEntryId,
     required this.date,
-    required this.status,
+    required this.attendanceStatus,
+    required this.classification,
     required this.confidenceScore,
     required this.checksJson,
     this.overrideReason,
+    required this.autoResolved,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1466,12 +1538,14 @@ class AttendanceRecord extends DataClass
     map['id'] = Variable<int>(id);
     map['timetable_entry_id'] = Variable<int>(timetableEntryId);
     map['date'] = Variable<DateTime>(date);
-    map['status'] = Variable<String>(status);
+    map['attendance_status'] = Variable<String>(attendanceStatus);
+    map['classification'] = Variable<String>(classification);
     map['confidence_score'] = Variable<double>(confidenceScore);
     map['checks_json'] = Variable<String>(checksJson);
     if (!nullToAbsent || overrideReason != null) {
       map['override_reason'] = Variable<String>(overrideReason);
     }
+    map['auto_resolved'] = Variable<bool>(autoResolved);
     return map;
   }
 
@@ -1480,12 +1554,14 @@ class AttendanceRecord extends DataClass
       id: Value(id),
       timetableEntryId: Value(timetableEntryId),
       date: Value(date),
-      status: Value(status),
+      attendanceStatus: Value(attendanceStatus),
+      classification: Value(classification),
       confidenceScore: Value(confidenceScore),
       checksJson: Value(checksJson),
       overrideReason: overrideReason == null && nullToAbsent
           ? const Value.absent()
           : Value(overrideReason),
+      autoResolved: Value(autoResolved),
     );
   }
 
@@ -1498,10 +1574,12 @@ class AttendanceRecord extends DataClass
       id: serializer.fromJson<int>(json['id']),
       timetableEntryId: serializer.fromJson<int>(json['timetableEntryId']),
       date: serializer.fromJson<DateTime>(json['date']),
-      status: serializer.fromJson<String>(json['status']),
+      attendanceStatus: serializer.fromJson<String>(json['attendanceStatus']),
+      classification: serializer.fromJson<String>(json['classification']),
       confidenceScore: serializer.fromJson<double>(json['confidenceScore']),
       checksJson: serializer.fromJson<String>(json['checksJson']),
       overrideReason: serializer.fromJson<String?>(json['overrideReason']),
+      autoResolved: serializer.fromJson<bool>(json['autoResolved']),
     );
   }
   @override
@@ -1511,10 +1589,12 @@ class AttendanceRecord extends DataClass
       'id': serializer.toJson<int>(id),
       'timetableEntryId': serializer.toJson<int>(timetableEntryId),
       'date': serializer.toJson<DateTime>(date),
-      'status': serializer.toJson<String>(status),
+      'attendanceStatus': serializer.toJson<String>(attendanceStatus),
+      'classification': serializer.toJson<String>(classification),
       'confidenceScore': serializer.toJson<double>(confidenceScore),
       'checksJson': serializer.toJson<String>(checksJson),
       'overrideReason': serializer.toJson<String?>(overrideReason),
+      'autoResolved': serializer.toJson<bool>(autoResolved),
     };
   }
 
@@ -1522,20 +1602,24 @@ class AttendanceRecord extends DataClass
     int? id,
     int? timetableEntryId,
     DateTime? date,
-    String? status,
+    String? attendanceStatus,
+    String? classification,
     double? confidenceScore,
     String? checksJson,
     Value<String?> overrideReason = const Value.absent(),
+    bool? autoResolved,
   }) => AttendanceRecord(
     id: id ?? this.id,
     timetableEntryId: timetableEntryId ?? this.timetableEntryId,
     date: date ?? this.date,
-    status: status ?? this.status,
+    attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+    classification: classification ?? this.classification,
     confidenceScore: confidenceScore ?? this.confidenceScore,
     checksJson: checksJson ?? this.checksJson,
     overrideReason: overrideReason.present
         ? overrideReason.value
         : this.overrideReason,
+    autoResolved: autoResolved ?? this.autoResolved,
   );
   AttendanceRecord copyWithCompanion(AttendanceRecordsCompanion data) {
     return AttendanceRecord(
@@ -1544,7 +1628,12 @@ class AttendanceRecord extends DataClass
           ? data.timetableEntryId.value
           : this.timetableEntryId,
       date: data.date.present ? data.date.value : this.date,
-      status: data.status.present ? data.status.value : this.status,
+      attendanceStatus: data.attendanceStatus.present
+          ? data.attendanceStatus.value
+          : this.attendanceStatus,
+      classification: data.classification.present
+          ? data.classification.value
+          : this.classification,
       confidenceScore: data.confidenceScore.present
           ? data.confidenceScore.value
           : this.confidenceScore,
@@ -1554,6 +1643,9 @@ class AttendanceRecord extends DataClass
       overrideReason: data.overrideReason.present
           ? data.overrideReason.value
           : this.overrideReason,
+      autoResolved: data.autoResolved.present
+          ? data.autoResolved.value
+          : this.autoResolved,
     );
   }
 
@@ -1563,10 +1655,12 @@ class AttendanceRecord extends DataClass
           ..write('id: $id, ')
           ..write('timetableEntryId: $timetableEntryId, ')
           ..write('date: $date, ')
-          ..write('status: $status, ')
+          ..write('attendanceStatus: $attendanceStatus, ')
+          ..write('classification: $classification, ')
           ..write('confidenceScore: $confidenceScore, ')
           ..write('checksJson: $checksJson, ')
-          ..write('overrideReason: $overrideReason')
+          ..write('overrideReason: $overrideReason, ')
+          ..write('autoResolved: $autoResolved')
           ..write(')'))
         .toString();
   }
@@ -1576,10 +1670,12 @@ class AttendanceRecord extends DataClass
     id,
     timetableEntryId,
     date,
-    status,
+    attendanceStatus,
+    classification,
     confidenceScore,
     checksJson,
     overrideReason,
+    autoResolved,
   );
   @override
   bool operator ==(Object other) =>
@@ -1588,57 +1684,68 @@ class AttendanceRecord extends DataClass
           other.id == this.id &&
           other.timetableEntryId == this.timetableEntryId &&
           other.date == this.date &&
-          other.status == this.status &&
+          other.attendanceStatus == this.attendanceStatus &&
+          other.classification == this.classification &&
           other.confidenceScore == this.confidenceScore &&
           other.checksJson == this.checksJson &&
-          other.overrideReason == this.overrideReason);
+          other.overrideReason == this.overrideReason &&
+          other.autoResolved == this.autoResolved);
 }
 
 class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
   final Value<int> id;
   final Value<int> timetableEntryId;
   final Value<DateTime> date;
-  final Value<String> status;
+  final Value<String> attendanceStatus;
+  final Value<String> classification;
   final Value<double> confidenceScore;
   final Value<String> checksJson;
   final Value<String?> overrideReason;
+  final Value<bool> autoResolved;
   const AttendanceRecordsCompanion({
     this.id = const Value.absent(),
     this.timetableEntryId = const Value.absent(),
     this.date = const Value.absent(),
-    this.status = const Value.absent(),
+    this.attendanceStatus = const Value.absent(),
+    this.classification = const Value.absent(),
     this.confidenceScore = const Value.absent(),
     this.checksJson = const Value.absent(),
     this.overrideReason = const Value.absent(),
+    this.autoResolved = const Value.absent(),
   });
   AttendanceRecordsCompanion.insert({
     this.id = const Value.absent(),
     required int timetableEntryId,
     required DateTime date,
-    required String status,
+    this.attendanceStatus = const Value.absent(),
+    this.classification = const Value.absent(),
     this.confidenceScore = const Value.absent(),
     this.checksJson = const Value.absent(),
     this.overrideReason = const Value.absent(),
+    this.autoResolved = const Value.absent(),
   }) : timetableEntryId = Value(timetableEntryId),
-       date = Value(date),
-       status = Value(status);
+       date = Value(date);
   static Insertable<AttendanceRecord> custom({
     Expression<int>? id,
     Expression<int>? timetableEntryId,
     Expression<DateTime>? date,
-    Expression<String>? status,
+    Expression<String>? attendanceStatus,
+    Expression<String>? classification,
     Expression<double>? confidenceScore,
     Expression<String>? checksJson,
     Expression<String>? overrideReason,
+    Expression<bool>? autoResolved,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (timetableEntryId != null) 'timetable_entry_id': timetableEntryId,
       if (date != null) 'date': date,
-      if (status != null) 'status': status,
+      if (attendanceStatus != null) 'attendance_status': attendanceStatus,
+      if (classification != null) 'classification': classification,
       if (confidenceScore != null) 'confidence_score': confidenceScore,
       if (checksJson != null) 'checks_json': checksJson,
       if (overrideReason != null) 'override_reason': overrideReason,
+      if (autoResolved != null) 'auto_resolved': autoResolved,
     });
   }
 
@@ -1646,19 +1753,23 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     Value<int>? id,
     Value<int>? timetableEntryId,
     Value<DateTime>? date,
-    Value<String>? status,
+    Value<String>? attendanceStatus,
+    Value<String>? classification,
     Value<double>? confidenceScore,
     Value<String>? checksJson,
     Value<String?>? overrideReason,
+    Value<bool>? autoResolved,
   }) {
     return AttendanceRecordsCompanion(
       id: id ?? this.id,
       timetableEntryId: timetableEntryId ?? this.timetableEntryId,
       date: date ?? this.date,
-      status: status ?? this.status,
+      attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+      classification: classification ?? this.classification,
       confidenceScore: confidenceScore ?? this.confidenceScore,
       checksJson: checksJson ?? this.checksJson,
       overrideReason: overrideReason ?? this.overrideReason,
+      autoResolved: autoResolved ?? this.autoResolved,
     );
   }
 
@@ -1674,8 +1785,11 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     if (date.present) {
       map['date'] = Variable<DateTime>(date.value);
     }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
+    if (attendanceStatus.present) {
+      map['attendance_status'] = Variable<String>(attendanceStatus.value);
+    }
+    if (classification.present) {
+      map['classification'] = Variable<String>(classification.value);
     }
     if (confidenceScore.present) {
       map['confidence_score'] = Variable<double>(confidenceScore.value);
@@ -1686,6 +1800,9 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
     if (overrideReason.present) {
       map['override_reason'] = Variable<String>(overrideReason.value);
     }
+    if (autoResolved.present) {
+      map['auto_resolved'] = Variable<bool>(autoResolved.value);
+    }
     return map;
   }
 
@@ -1695,10 +1812,413 @@ class AttendanceRecordsCompanion extends UpdateCompanion<AttendanceRecord> {
           ..write('id: $id, ')
           ..write('timetableEntryId: $timetableEntryId, ')
           ..write('date: $date, ')
-          ..write('status: $status, ')
+          ..write('attendanceStatus: $attendanceStatus, ')
+          ..write('classification: $classification, ')
           ..write('confidenceScore: $confidenceScore, ')
           ..write('checksJson: $checksJson, ')
-          ..write('overrideReason: $overrideReason')
+          ..write('overrideReason: $overrideReason, ')
+          ..write('autoResolved: $autoResolved')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HolidaysTable extends Holidays with TableInfo<$HolidaysTable, Holiday> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HolidaysTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _dateMeta = const VerificationMeta('date');
+  @override
+  late final GeneratedColumn<DateTime> date = GeneratedColumn<DateTime>(
+    'date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _labelMeta = const VerificationMeta('label');
+  @override
+  late final GeneratedColumn<String> label = GeneratedColumn<String>(
+    'label',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('Holiday'),
+  );
+  static const VerificationMeta _eventTypeMeta = const VerificationMeta(
+    'eventType',
+  );
+  @override
+  late final GeneratedColumn<String> eventType = GeneratedColumn<String>(
+    'event_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('holiday'),
+  );
+  static const VerificationMeta _followsDayMeta = const VerificationMeta(
+    'followsDay',
+  );
+  @override
+  late final GeneratedColumn<String> followsDay = GeneratedColumn<String>(
+    'follows_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    date,
+    endDate,
+    label,
+    eventType,
+    followsDay,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'holidays';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Holiday> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('date')) {
+      context.handle(
+        _dateMeta,
+        date.isAcceptableOrUnknown(data['date']!, _dateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_dateMeta);
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    }
+    if (data.containsKey('label')) {
+      context.handle(
+        _labelMeta,
+        label.isAcceptableOrUnknown(data['label']!, _labelMeta),
+      );
+    }
+    if (data.containsKey('event_type')) {
+      context.handle(
+        _eventTypeMeta,
+        eventType.isAcceptableOrUnknown(data['event_type']!, _eventTypeMeta),
+      );
+    }
+    if (data.containsKey('follows_day')) {
+      context.handle(
+        _followsDayMeta,
+        followsDay.isAcceptableOrUnknown(data['follows_day']!, _followsDayMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  Holiday map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Holiday(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      date: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      ),
+      label: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}label'],
+      )!,
+      eventType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_type'],
+      )!,
+      followsDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}follows_day'],
+      ),
+    );
+  }
+
+  @override
+  $HolidaysTable createAlias(String alias) {
+    return $HolidaysTable(attachedDatabase, alias);
+  }
+}
+
+class Holiday extends DataClass implements Insertable<Holiday> {
+  final int id;
+  final DateTime date;
+  final DateTime? endDate;
+  final String label;
+
+  /// Event type classification. Determines how the app handles attendance.
+  /// Values: holiday | exam | cancelled | vacation | compensatory | restricted | half_day_morning | half_day_afternoon
+  final String eventType;
+
+  /// For compensatory days: which day's timetable to follow.
+  /// Values: monday | tuesday | wednesday | thursday | friday | saturday | sunday
+  final String? followsDay;
+  const Holiday({
+    required this.id,
+    required this.date,
+    this.endDate,
+    required this.label,
+    required this.eventType,
+    this.followsDay,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['date'] = Variable<DateTime>(date);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    map['label'] = Variable<String>(label);
+    map['event_type'] = Variable<String>(eventType);
+    if (!nullToAbsent || followsDay != null) {
+      map['follows_day'] = Variable<String>(followsDay);
+    }
+    return map;
+  }
+
+  HolidaysCompanion toCompanion(bool nullToAbsent) {
+    return HolidaysCompanion(
+      id: Value(id),
+      date: Value(date),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      label: Value(label),
+      eventType: Value(eventType),
+      followsDay: followsDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(followsDay),
+    );
+  }
+
+  factory Holiday.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Holiday(
+      id: serializer.fromJson<int>(json['id']),
+      date: serializer.fromJson<DateTime>(json['date']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      label: serializer.fromJson<String>(json['label']),
+      eventType: serializer.fromJson<String>(json['eventType']),
+      followsDay: serializer.fromJson<String?>(json['followsDay']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'date': serializer.toJson<DateTime>(date),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'label': serializer.toJson<String>(label),
+      'eventType': serializer.toJson<String>(eventType),
+      'followsDay': serializer.toJson<String?>(followsDay),
+    };
+  }
+
+  Holiday copyWith({
+    int? id,
+    DateTime? date,
+    Value<DateTime?> endDate = const Value.absent(),
+    String? label,
+    String? eventType,
+    Value<String?> followsDay = const Value.absent(),
+  }) => Holiday(
+    id: id ?? this.id,
+    date: date ?? this.date,
+    endDate: endDate.present ? endDate.value : this.endDate,
+    label: label ?? this.label,
+    eventType: eventType ?? this.eventType,
+    followsDay: followsDay.present ? followsDay.value : this.followsDay,
+  );
+  Holiday copyWithCompanion(HolidaysCompanion data) {
+    return Holiday(
+      id: data.id.present ? data.id.value : this.id,
+      date: data.date.present ? data.date.value : this.date,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      label: data.label.present ? data.label.value : this.label,
+      eventType: data.eventType.present ? data.eventType.value : this.eventType,
+      followsDay: data.followsDay.present
+          ? data.followsDay.value
+          : this.followsDay,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Holiday(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('endDate: $endDate, ')
+          ..write('label: $label, ')
+          ..write('eventType: $eventType, ')
+          ..write('followsDay: $followsDay')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, date, endDate, label, eventType, followsDay);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Holiday &&
+          other.id == this.id &&
+          other.date == this.date &&
+          other.endDate == this.endDate &&
+          other.label == this.label &&
+          other.eventType == this.eventType &&
+          other.followsDay == this.followsDay);
+}
+
+class HolidaysCompanion extends UpdateCompanion<Holiday> {
+  final Value<int> id;
+  final Value<DateTime> date;
+  final Value<DateTime?> endDate;
+  final Value<String> label;
+  final Value<String> eventType;
+  final Value<String?> followsDay;
+  const HolidaysCompanion({
+    this.id = const Value.absent(),
+    this.date = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.label = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.followsDay = const Value.absent(),
+  });
+  HolidaysCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime date,
+    this.endDate = const Value.absent(),
+    this.label = const Value.absent(),
+    this.eventType = const Value.absent(),
+    this.followsDay = const Value.absent(),
+  }) : date = Value(date);
+  static Insertable<Holiday> custom({
+    Expression<int>? id,
+    Expression<DateTime>? date,
+    Expression<DateTime>? endDate,
+    Expression<String>? label,
+    Expression<String>? eventType,
+    Expression<String>? followsDay,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (date != null) 'date': date,
+      if (endDate != null) 'end_date': endDate,
+      if (label != null) 'label': label,
+      if (eventType != null) 'event_type': eventType,
+      if (followsDay != null) 'follows_day': followsDay,
+    });
+  }
+
+  HolidaysCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? date,
+    Value<DateTime?>? endDate,
+    Value<String>? label,
+    Value<String>? eventType,
+    Value<String?>? followsDay,
+  }) {
+    return HolidaysCompanion(
+      id: id ?? this.id,
+      date: date ?? this.date,
+      endDate: endDate ?? this.endDate,
+      label: label ?? this.label,
+      eventType: eventType ?? this.eventType,
+      followsDay: followsDay ?? this.followsDay,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (date.present) {
+      map['date'] = Variable<DateTime>(date.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (label.present) {
+      map['label'] = Variable<String>(label.value);
+    }
+    if (eventType.present) {
+      map['event_type'] = Variable<String>(eventType.value);
+    }
+    if (followsDay.present) {
+      map['follows_day'] = Variable<String>(followsDay.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HolidaysCompanion(')
+          ..write('id: $id, ')
+          ..write('date: $date, ')
+          ..write('endDate: $endDate, ')
+          ..write('label: $label, ')
+          ..write('eventType: $eventType, ')
+          ..write('followsDay: $followsDay')
           ..write(')'))
         .toString();
   }
@@ -1714,6 +2234,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $AttendanceRecordsTable attendanceRecords =
       $AttendanceRecordsTable(this);
+  late final $HolidaysTable holidays = $HolidaysTable(this);
   late final SubjectsDao subjectsDao = SubjectsDao(this as AppDatabase);
   late final VenuesDao venuesDao = VenuesDao(this as AppDatabase);
   late final TimetableEntriesDao timetableEntriesDao = TimetableEntriesDao(
@@ -1722,6 +2243,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final AttendanceRecordsDao attendanceRecordsDao = AttendanceRecordsDao(
     this as AppDatabase,
   );
+  late final HolidaysDao holidaysDao = HolidaysDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1731,6 +2253,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     venues,
     timetableEntries,
     attendanceRecords,
+    holidays,
   ];
 }
 
@@ -2904,20 +3427,24 @@ typedef $$AttendanceRecordsTableCreateCompanionBuilder =
       Value<int> id,
       required int timetableEntryId,
       required DateTime date,
-      required String status,
+      Value<String> attendanceStatus,
+      Value<String> classification,
       Value<double> confidenceScore,
       Value<String> checksJson,
       Value<String?> overrideReason,
+      Value<bool> autoResolved,
     });
 typedef $$AttendanceRecordsTableUpdateCompanionBuilder =
     AttendanceRecordsCompanion Function({
       Value<int> id,
       Value<int> timetableEntryId,
       Value<DateTime> date,
-      Value<String> status,
+      Value<String> attendanceStatus,
+      Value<String> classification,
       Value<double> confidenceScore,
       Value<String> checksJson,
       Value<String?> overrideReason,
+      Value<bool> autoResolved,
     });
 
 final class $$AttendanceRecordsTableReferences
@@ -2972,8 +3499,13 @@ class $$AttendanceRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get status => $composableBuilder(
-    column: $table.status,
+  ColumnFilters<String> get attendanceStatus => $composableBuilder(
+    column: $table.attendanceStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get classification => $composableBuilder(
+    column: $table.classification,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2989,6 +3521,11 @@ class $$AttendanceRecordsTableFilterComposer
 
   ColumnFilters<String> get overrideReason => $composableBuilder(
     column: $table.overrideReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get autoResolved => $composableBuilder(
+    column: $table.autoResolved,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3035,8 +3572,13 @@ class $$AttendanceRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get status => $composableBuilder(
-    column: $table.status,
+  ColumnOrderings<String> get attendanceStatus => $composableBuilder(
+    column: $table.attendanceStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get classification => $composableBuilder(
+    column: $table.classification,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3052,6 +3594,11 @@ class $$AttendanceRecordsTableOrderingComposer
 
   ColumnOrderings<String> get overrideReason => $composableBuilder(
     column: $table.overrideReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get autoResolved => $composableBuilder(
+    column: $table.autoResolved,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3094,8 +3641,15 @@ class $$AttendanceRecordsTableAnnotationComposer
   GeneratedColumn<DateTime> get date =>
       $composableBuilder(column: $table.date, builder: (column) => column);
 
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
+  GeneratedColumn<String> get attendanceStatus => $composableBuilder(
+    column: $table.attendanceStatus,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get classification => $composableBuilder(
+    column: $table.classification,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<double> get confidenceScore => $composableBuilder(
     column: $table.confidenceScore,
@@ -3109,6 +3663,11 @@ class $$AttendanceRecordsTableAnnotationComposer
 
   GeneratedColumn<String> get overrideReason => $composableBuilder(
     column: $table.overrideReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get autoResolved => $composableBuilder(
+    column: $table.autoResolved,
     builder: (column) => column,
   );
 
@@ -3172,36 +3731,44 @@ class $$AttendanceRecordsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int> timetableEntryId = const Value.absent(),
                 Value<DateTime> date = const Value.absent(),
-                Value<String> status = const Value.absent(),
+                Value<String> attendanceStatus = const Value.absent(),
+                Value<String> classification = const Value.absent(),
                 Value<double> confidenceScore = const Value.absent(),
                 Value<String> checksJson = const Value.absent(),
                 Value<String?> overrideReason = const Value.absent(),
+                Value<bool> autoResolved = const Value.absent(),
               }) => AttendanceRecordsCompanion(
                 id: id,
                 timetableEntryId: timetableEntryId,
                 date: date,
-                status: status,
+                attendanceStatus: attendanceStatus,
+                classification: classification,
                 confidenceScore: confidenceScore,
                 checksJson: checksJson,
                 overrideReason: overrideReason,
+                autoResolved: autoResolved,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
                 required int timetableEntryId,
                 required DateTime date,
-                required String status,
+                Value<String> attendanceStatus = const Value.absent(),
+                Value<String> classification = const Value.absent(),
                 Value<double> confidenceScore = const Value.absent(),
                 Value<String> checksJson = const Value.absent(),
                 Value<String?> overrideReason = const Value.absent(),
+                Value<bool> autoResolved = const Value.absent(),
               }) => AttendanceRecordsCompanion.insert(
                 id: id,
                 timetableEntryId: timetableEntryId,
                 date: date,
-                status: status,
+                attendanceStatus: attendanceStatus,
+                classification: classification,
                 confidenceScore: confidenceScore,
                 checksJson: checksJson,
                 overrideReason: overrideReason,
+                autoResolved: autoResolved,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -3268,6 +3835,222 @@ typedef $$AttendanceRecordsTableProcessedTableManager =
       AttendanceRecord,
       PrefetchHooks Function({bool timetableEntryId})
     >;
+typedef $$HolidaysTableCreateCompanionBuilder = HolidaysCompanion Function({
+  Value<int> id,
+  required DateTime date,
+  Value<DateTime?> endDate,
+  Value<String> label,
+  Value<String> eventType,
+  Value<String?> followsDay,
+});
+typedef $$HolidaysTableUpdateCompanionBuilder = HolidaysCompanion Function({
+  Value<int> id,
+  Value<DateTime> date,
+  Value<DateTime?> endDate,
+  Value<String> label,
+  Value<String> eventType,
+  Value<String?> followsDay,
+});
+
+class $$HolidaysTableFilterComposer
+    extends Composer<_$AppDatabase, $HolidaysTable> {
+  $$HolidaysTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get followsDay => $composableBuilder(
+    column: $table.followsDay,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$HolidaysTableOrderingComposer
+    extends Composer<_$AppDatabase, $HolidaysTable> {
+  $$HolidaysTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get date => $composableBuilder(
+    column: $table.date,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get label => $composableBuilder(
+    column: $table.label,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get eventType => $composableBuilder(
+    column: $table.eventType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get followsDay => $composableBuilder(
+    column: $table.followsDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HolidaysTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HolidaysTable> {
+  $$HolidaysTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get date =>
+      $composableBuilder(column: $table.date, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get label =>
+      $composableBuilder(column: $table.label, builder: (column) => column);
+
+  GeneratedColumn<String> get eventType =>
+      $composableBuilder(column: $table.eventType, builder: (column) => column);
+
+  GeneratedColumn<String> get followsDay => $composableBuilder(
+    column: $table.followsDay,
+    builder: (column) => column,
+  );
+}
+
+class $$HolidaysTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HolidaysTable,
+          Holiday,
+          $$HolidaysTableFilterComposer,
+          $$HolidaysTableOrderingComposer,
+          $$HolidaysTableAnnotationComposer,
+          $$HolidaysTableCreateCompanionBuilder,
+          $$HolidaysTableUpdateCompanionBuilder,
+          (Holiday, BaseReferences<_$AppDatabase, $HolidaysTable, Holiday>),
+          Holiday,
+          PrefetchHooks Function()
+        > {
+  $$HolidaysTableTableManager(_$AppDatabase db, $HolidaysTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HolidaysTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HolidaysTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HolidaysTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> date = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String?> followsDay = const Value.absent(),
+              }) => HolidaysCompanion(
+                id: id,
+                date: date,
+                endDate: endDate,
+                label: label,
+                eventType: eventType,
+                followsDay: followsDay,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime date,
+                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> label = const Value.absent(),
+                Value<String> eventType = const Value.absent(),
+                Value<String?> followsDay = const Value.absent(),
+              }) => HolidaysCompanion.insert(
+                id: id,
+                date: date,
+                endDate: endDate,
+                label: label,
+                eventType: eventType,
+                followsDay: followsDay,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$HolidaysTable, Holiday>(table),
+                  BaseReferences<_$AppDatabase, $HolidaysTable, Holiday>(
+                    db,
+                    table,
+                    e,
+                  ),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HolidaysTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HolidaysTable,
+      Holiday,
+      $$HolidaysTableFilterComposer,
+      $$HolidaysTableOrderingComposer,
+      $$HolidaysTableAnnotationComposer,
+      $$HolidaysTableCreateCompanionBuilder,
+      $$HolidaysTableUpdateCompanionBuilder,
+      (Holiday, BaseReferences<_$AppDatabase, $HolidaysTable, Holiday>),
+      Holiday,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3280,4 +4063,6 @@ class $AppDatabaseManager {
       $$TimetableEntriesTableTableManager(_db, _db.timetableEntries);
   $$AttendanceRecordsTableTableManager get attendanceRecords =>
       $$AttendanceRecordsTableTableManager(_db, _db.attendanceRecords);
+  $$HolidaysTableTableManager get holidays =>
+      $$HolidaysTableTableManager(_db, _db.holidays);
 }

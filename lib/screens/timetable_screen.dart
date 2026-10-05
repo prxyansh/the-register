@@ -77,7 +77,21 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
           animation: _tabController,
           builder: (context, _) {
             final labels = ['Add Subject', 'Add Class', 'Add Venue'];
-            return Text(labels[_tabController.index]);
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SizeTransition(
+                  sizeFactor: animation,
+                  axis: Axis.horizontal,
+                  child: child,
+                ),
+              ),
+              child: Text(
+                labels[_tabController.index],
+                key: ValueKey(_tabController.index),
+              ),
+            );
           },
         ),
       ),

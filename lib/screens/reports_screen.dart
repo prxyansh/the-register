@@ -37,10 +37,13 @@ class ReportsScreen extends ConsumerWidget {
             return _buildEmptyState(theme);
           }
 
+          final excusedPolicy = ref.watch(excusedCountsAsProvider);
+
           final reports = computeReports(
             subjects: subjects,
             entries: entries,
             records: records,
+            excusedPolicy: excusedPolicy,
           );
 
           final weeklyTrend = computeWeeklyTrend(records);
@@ -127,11 +130,11 @@ class _OverallSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalScheduled = reports.fold(0, (sum, r) => sum + r.totalScheduled);
+    final totalCounted = reports.fold(0, (sum, r) => sum + r.totalCounted);
     final totalPresent = reports.fold(0, (sum, r) => sum + r.presentCount);
     final totalAbsent = reports.fold(0, (sum, r) => sum + r.absentCount);
     final overallPct =
-        totalScheduled > 0 ? (totalPresent / totalScheduled) * 100.0 : 0.0;
+        totalCounted > 0 ? (totalPresent / totalCounted) * 100.0 : 0.0;
 
     final isDark = theme.brightness == Brightness.dark;
     final pctColor = overallPct >= 75
@@ -167,7 +170,7 @@ class _OverallSummary extends StatelessWidget {
               children: [
                 _StatItem(
                   label: 'Classes',
-                  value: '$totalScheduled',
+                  value: '$totalCounted',
                   theme: theme,
                 ),
                 _StatItem(
@@ -290,7 +293,7 @@ class _SubjectReportRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${report.presentCount} / ${report.totalScheduled - report.excusedCount} classes • ${pct.toStringAsFixed(1)}%',
+                  '${report.presentCount} / ${report.totalCounted} classes • ${pct.toStringAsFixed(1)}%',
                   style: RegisterTheme.bodySmall(theme.colorScheme.outline),
                 ),
                 const SizedBox(height: 12),
@@ -342,10 +345,13 @@ class _SubjectReportRow extends StatelessWidget {
                   style: RegisterTheme.bodySmall(theme.colorScheme.outline).copyWith(fontSize: 11),
                 ),
                 
-                if (report.excusedCount > 0) ...[
+                if (report.excusedCount > 0 || report.cancelledCount > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    '${report.excusedCount} excused (not counted)',
+                    [
+                      if (report.excusedCount > 0) '${report.excusedCount} excused',
+                      if (report.cancelledCount > 0) '${report.cancelledCount} cancelled',
+                    ].join(' • ') + ' (not counted)',
                     style: RegisterTheme.bodySmall(theme.colorScheme.outline).copyWith(
                       fontStyle: FontStyle.italic,
                     ),

@@ -116,13 +116,27 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
         ),
         const SizedBox(height: 32),
         FilledButton.icon(
-          onPressed: () async {
-            await Permission.ignoreBatteryOptimizations.request();
-            setState(() {
-              _step = 4;
-            });
+          onPressed: _isRequesting ? null : () async {
+            setState(() => _isRequesting = true);
+            var status = await Permission.ignoreBatteryOptimizations.request();
+            if (!status.isGranted) {
+              await openAppSettings();
+              status = await Permission.ignoreBatteryOptimizations.status;
+            }
+            if (mounted) {
+              setState(() {
+                _isRequesting = false;
+                _step = 4;
+              });
+            }
           },
-          icon: const Icon(Icons.settings_suggest_rounded),
+          icon: _isRequesting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.settings_suggest_rounded),
           label: const Text('Allow Background Execution'),
         ),
         const SizedBox(height: 12),
@@ -390,6 +404,10 @@ class _PermissionSetupScreenState extends State<PermissionSetupScreen> {
   }
 
   Future<void> _initializeScheduler() async {
+    if (!await Permission.notification.isGranted) {
+      await Permission.notification.request();
+    }
+
     await BackgroundScheduler.initialize();
     if (_foregroundGranted || _backgroundGranted) {
       await BackgroundScheduler.scheduleDailyPlanner();

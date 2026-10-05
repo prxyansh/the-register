@@ -38,9 +38,16 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   }
 
   Future<void> _showOverrideDialog() async {
-    String? selectedReason;
+    String? selectedAction;
     final customController = TextEditingController();
-    final reasons = ['Sick', 'Class Cancelled', 'Official Leave', 'Other'];
+    final actions = [
+      'Mark Present',
+      'Mark Absent',
+      'Class Cancelled',
+      'Excused (Sick)',
+      'Excused (Official Leave)',
+      'Excused (Other)',
+    ];
 
     final result = await showDialog<Map<String, String>>(
       context: context,
@@ -58,24 +65,24 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                 ),
                 const SizedBox(height: 16),
                 RadioGroup<String>(
-                  groupValue: selectedReason ?? '',
+                  groupValue: selectedAction ?? '',
                   onChanged: (value) {
-                    setDialogState(() => selectedReason = value);
+                    setDialogState(() => selectedAction = value);
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    children: reasons.map((reason) => ListTile(
-                          title: Text(reason),
-                          leading: Radio<String>(value: reason),
+                    children: actions.map((action) => ListTile(
+                          title: Text(action),
+                          leading: Radio<String>(value: action),
                           onTap: () {
-                            setDialogState(() => selectedReason = reason);
+                            setDialogState(() => selectedAction = action);
                           },
                           dense: true,
                           contentPadding: EdgeInsets.zero,
                         )).toList(),
                   ),
                 ),
-                if (selectedReason == 'Other') ...[
+                if (selectedAction == 'Excused (Other)') ...[
                   const SizedBox(height: 8),
                   TextField(
                     controller: customController,
@@ -96,16 +103,56 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
                 child: const Text('Cancel'),
               ),
               FilledButton(
-                onPressed: selectedReason == null
+                onPressed: selectedAction == null
                     ? null
                     : () {
-                        final reason = selectedReason == 'Other'
-                            ? customController.text.trim().isEmpty
+                        // Map action to attendanceStatus + classification
+                        String newStatus;
+                        String newClassification;
+                        String? reason;
+
+                        switch (selectedAction) {
+                          case 'Mark Present':
+                            newStatus = 'present';
+                            newClassification = 'normal';
+                            reason = 'Manually marked present';
+                            break;
+                          case 'Mark Absent':
+                            newStatus = 'absent';
+                            newClassification = 'normal';
+                            reason = 'Manually marked absent';
+                            break;
+                          case 'Class Cancelled':
+                            // Keep original status for history, change classification
+                            newStatus = _record.attendanceStatus;
+                            newClassification = 'cancelled';
+                            reason = 'Class cancelled';
+                            break;
+                          case 'Excused (Sick)':
+                            newStatus = _record.attendanceStatus;
+                            newClassification = 'excused';
+                            reason = 'Sick';
+                            break;
+                          case 'Excused (Official Leave)':
+                            newStatus = _record.attendanceStatus;
+                            newClassification = 'excused';
+                            reason = 'Official Leave';
+                            break;
+                          case 'Excused (Other)':
+                            newStatus = _record.attendanceStatus;
+                            newClassification = 'excused';
+                            reason = customController.text.trim().isEmpty
                                 ? 'Other'
-                                : customController.text.trim()
-                            : selectedReason!;
-                        Navigator.pop(
-                            context, {'status': 'manual_override', 'reason': reason});
+                                : customController.text.trim();
+                            break;
+                          default:
+                            return;
+                        }
+                        Navigator.pop(context, {
+                          'status': newStatus,
+                          'classification': newClassification,
+                          'reason': reason,
+                        });
                       },
                 child: const Text('Override'),
               ),
@@ -120,6 +167,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
       await dao.overrideRecord(
         _record.id,
         result['status']!,
+        result['classification']!,
         result['reason'],
       );
 
@@ -131,7 +179,7 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
         HapticFeedback.heavyImpact();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Status overridden: ${result['reason']}'),
+            content: Text('Updated: ${result['reason']}'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -142,7 +190,8 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final status = AttendanceStatus.fromDbValue(_record.status);
+    final status = AttendanceStatus.fromDbValue(_record.attendanceStatus);
+    final classification = RecordClassification.fromDbValue(_record.classification);
 
     // Parse check samples
     List<CheckSample> samples = [];
@@ -179,15 +228,44 @@ class _RecordDetailScreenState extends ConsumerState<RecordDetailScreen> {
           ),
 
           // Override reason (if overridden)
-          if (_record.overrideReason != null) ...[
+          if (_record.overrideReason != null || classification != RecordClassification.normal) ...[
             const SizedBox(height: 16),
             Card(
               color: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.3),
               child: ListTile(
-                leading: Icon(Icons.edit_rounded,
-                    color: theme.colorScheme.tertiary),
-                title: const Text('Manual Override'),
-                subtitle: Text(_record.overrideReason!),
+                leading: Icon(
+                  classification == RecordClassification.cancelled
+                      ? Icons.event_busy_rounded
+                      : classification == RecordClassification.excused
+                          ? Icons.medical_services_rounded
+                          : Icons.edit_rounded,
+                  color: theme.colorScheme.tertiary,
+                ),
+                title: Text(
+                  classification == RecordClassification.cancelled
+                      ? 'Class Cancelled'
+                      : classification == RecordClassification.excused
+                          ? 'Excused'
+                          : 'Manual Override',
+                ),
+                subtitle: Text(_record.overrideReason ?? classification.toDbValue()),
+              ),
+            ),
+          ],
+
+          // Auto-resolved indicator (§5)
+          if (_record.autoResolved) ...[
+            const SizedBox(height: 8),
+            Card(
+              color: Colors.orange.shade50,
+              child: ListTile(
+                leading: Icon(Icons.auto_fix_high_rounded,
+                    color: Colors.orange.shade700),
+                title: const Text('Auto-Resolved'),
+                subtitle: const Text(
+                  'This record was automatically resolved after 48 hours. '
+                  'Please verify and correct if needed.',
+                ),
               ),
             ),
           ],
@@ -265,7 +343,7 @@ class _HeaderCard extends StatelessWidget {
       AttendanceStatus.present => ('Present', Colors.green.shade700, Icons.check_circle_rounded),
       AttendanceStatus.absent => ('Absent', theme.colorScheme.error, Icons.cancel_rounded),
       AttendanceStatus.ambiguous => ('Ambiguous', Colors.orange.shade700, Icons.help_rounded),
-      AttendanceStatus.manualOverride => ('Override', theme.colorScheme.tertiary, Icons.edit_rounded),
+      AttendanceStatus.unknown => ('Unknown', theme.colorScheme.outline, Icons.help_outline_rounded),
     };
 
     return Card(
@@ -353,7 +431,7 @@ class _ConfidenceSection extends StatelessWidget {
       AttendanceStatus.present => Colors.green.shade600,
       AttendanceStatus.absent => theme.colorScheme.error,
       AttendanceStatus.ambiguous => Colors.orange.shade600,
-      AttendanceStatus.manualOverride => theme.colorScheme.tertiary,
+      AttendanceStatus.unknown => theme.colorScheme.outline,
     };
 
     return Card(

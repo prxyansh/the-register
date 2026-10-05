@@ -42,20 +42,69 @@ class TimetableEntries extends Table {
       boolean().withDefault(const Constant(true))(); // For exceptions/holidays
 }
 
-/// AttendanceRecords table — SPEC.md §4
-/// One record per class occurrence per day. Stores detection results,
-/// confidence score, raw check data, and optional manual override reason.
+/// AttendanceRecords table — attendance-rules.md §1.
+///
+/// One record per class occurrence per day. Two-field model:
+/// - `attendanceStatus`: what the detection engine observed (present/absent/ambiguous/unknown)
+/// - `classification`: whether/how this record counts toward % (normal/cancelled/holiday/excused/extra_session)
+///
+/// Master rule (§2): A record counts toward % only if
+/// classification is normal or extra_session, AND status is present or absent.
 class AttendanceRecords extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get timetableEntryId =>
       integer().references(TimetableEntries, #id)();
   DateTimeColumn get date => dateTime()(); // The date of the class occurrence
-  TextColumn get status =>
-      text()(); // Stored as string, mapped via AttendanceStatus enum
+
+  /// What happened — detection result or manual entry.
+  /// Values: present | absent | ambiguous | unknown
+  TextColumn get attendanceStatus =>
+      text().withDefault(const Constant('unknown'))();
+
+  /// Whether/how this record counts toward attendance %.
+  /// Values: normal | cancelled | holiday | excused | extra_session
+  TextColumn get classification =>
+      text().withDefault(const Constant('normal'))();
+
   RealColumn get confidenceScore =>
       real().withDefault(const Constant(0.0))(); // 0.0–1.0
   TextColumn get checksJson =>
       text().withDefault(const Constant('[]'))(); // Raw log of sample checks
   TextColumn get overrideReason =>
       text().nullable()(); // sick, cancelled, official leave, etc.
+
+  /// Whether this record was auto-resolved from ambiguous/unknown
+  /// after the 48-hour timeout (§5). Visually distinct in UI.
+  BoolColumn get autoResolved =>
+      boolean().withDefault(const Constant(false))();
+}
+
+/// Holidays / Academic Calendar table — attendance-rules.md §4.
+///
+/// Stores all academic calendar events: holidays, exams, vacations,
+/// compensatory days, cancelled classes, and restricted holidays.
+///
+/// Event types and their effect on attendance:
+/// - holiday:              Full day off. No tracking, no records.
+/// - exam:                 Exam period. Regular classes paused, no attendance penalty.
+/// - cancelled:            Classes cancelled (fest, event). No tracking.
+/// - vacation:             Multi-day break (use endDate for range). No tracking.
+/// - compensatory:         Working day on an off-day, follows another day's timetable.
+///                         Uses followsDay (e.g. "monday") to load correct schedule.
+/// - restricted:           Optional holiday. Tracking runs but won't penalize absence.
+/// - half_day_morning:     Only afternoon classes run.
+/// - half_day_afternoon:   Only morning classes run.
+class Holidays extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get date => dateTime()(); // Start date of the event
+  DateTimeColumn get endDate => dateTime().nullable()(); // End date for multi-day events (vacation, exam)
+  TextColumn get label =>
+      text().withDefault(const Constant('Holiday'))(); // e.g. "Diwali", "Semester Break"
+  /// Event type classification. Determines how the app handles attendance.
+  /// Values: holiday | exam | cancelled | vacation | compensatory | restricted | half_day_morning | half_day_afternoon
+  TextColumn get eventType =>
+      text().withDefault(const Constant('holiday'))();
+  /// For compensatory days: which day's timetable to follow.
+  /// Values: monday | tuesday | wednesday | thursday | friday | saturday | sunday
+  TextColumn get followsDay => text().nullable()();
 }

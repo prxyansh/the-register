@@ -194,6 +194,7 @@ class _TimetableEntryFormDialogState extends State<TimetableEntryFormDialog> {
 
               // Time pickers
               Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: _buildTimePicker(
@@ -212,7 +213,7 @@ class _TimetableEntryFormDialogState extends State<TimetableEntryFormDialog> {
                     ),
                   ),
                   const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    padding: EdgeInsets.only(bottom: 14, left: 8, right: 8),
                     child: Icon(Icons.arrow_forward_rounded, size: 20),
                   ),
                   Expanded(
@@ -341,23 +342,27 @@ class _TimetableEntryFormDialogState extends State<TimetableEntryFormDialog> {
           onTap: onTap,
           borderRadius: BorderRadius.circular(12),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
             decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Row(
-              children: [
-                Icon(Icons.schedule_rounded,
-                    size: 18, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Text(
-                  _formatTimeDisplay(time),
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Row(
+                children: [
+                  Icon(Icons.schedule_rounded,
+                      size: 18, color: theme.colorScheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatTimeDisplay(time),
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

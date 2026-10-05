@@ -24,7 +24,10 @@ class LocationService {
   /// Returns true if granted.
   static Future<bool> requestForegroundPermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      return false;
+      await Geolocator.openLocationSettings();
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        return false;
+      }
     }
 
     var permission = await Geolocator.checkPermission();
@@ -32,7 +35,9 @@ class LocationService {
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.deniedForever) {
-      return false;
+      await Geolocator.openAppSettings();
+      permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.deniedForever) return false;
     }
     return permission == LocationPermission.whileInUse ||
         permission == LocationPermission.always;
@@ -47,7 +52,14 @@ class LocationService {
 
     // On Android, requesting 'always' after 'whileInUse' opens settings
     final result = await Geolocator.requestPermission();
-    return result == LocationPermission.always;
+    if (result == LocationPermission.always) return true;
+
+    // If it didn't prompt or was denied, force open settings
+    await Geolocator.openAppSettings();
+    
+    // Check one more time when they return
+    final check = await Geolocator.checkPermission();
+    return check == LocationPermission.always;
   }
 
   /// Get current position with balanced power accuracy.

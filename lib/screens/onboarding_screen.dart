@@ -249,24 +249,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _buildTutorialStep(
                   context,
                   number: '2',
+                  title: 'Import Academic Calendar',
+                  body: 'Similarly, use the Academic Calendar AI prompt to import your holidays, exams, and cancelled classes so the tracker knows when to pause.',
+                ),
+                _buildTutorialStep(
+                  context,
+                  number: '3',
                   title: 'Set Venues',
                   body: 'Go to the Venues tab and pin the exact location and campus WiFi for each classroom.',
                 ),
                 _buildTutorialStep(
                   context,
-                  number: '3',
+                  number: '4',
                   title: 'Grant Permissions',
                   body: 'Allow background location so the app can detect when you enter a venue.',
                 ),
                 _buildTutorialStep(
                   context,
-                  number: '4',
+                  number: '5',
                   title: 'Start Tracking',
                   body: 'Enable tracking in Settings. The app will silently log your attendance in the background.',
                 ),
                 _buildTutorialStep(
                   context,
-                  number: '5',
+                  number: '6',
                   title: 'Check Stats',
                   body: 'Open the Reports tab to see your overall attendance percentages.',
                 ),

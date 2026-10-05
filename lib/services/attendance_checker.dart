@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:drift/drift.dart';
 import '../data/app_database.dart';
-import '../data/attendance_status.dart';
 import '../domain/detection_config.dart';
 import 'location_service.dart';
 import 'wifi_checker.dart';
@@ -75,6 +74,11 @@ class CheckSample {
 ///
 /// Performs GPS + WiFi + motion checks for a specific timetable entry.
 /// Uses weighted scoring from detection_config.dart.
+///
+/// Updated for attendance-rules.md:
+/// - Creates records with attendanceStatus + classification (two-field model)
+/// - Sets classification='normal' for auto-detected records
+/// - Uses 'unknown' status when no signal data is available
 class AttendanceChecker {
   final AppDatabase db;
 
@@ -154,11 +158,15 @@ class AttendanceChecker {
       List<CheckSample> allSamples;
 
       if (existingRecords.isEmpty) {
+        // Create new record with two-field model.
+        // attendance_status starts as 'unknown' until we have enough data.
+        // classification defaults to 'normal' (auto-detected class).
         recordId = await db.attendanceRecordsDao.insertRecord(
           AttendanceRecordsCompanion.insert(
             timetableEntryId: entry.id,
             date: startOfDay,
-            status: AttendanceStatus.ambiguous.toDbValue(),
+            attendanceStatus: const Value('unknown'),
+            classification: const Value('normal'),
           ),
         );
         allSamples = [sample];
@@ -178,22 +186,49 @@ class AttendanceChecker {
       final sampleScores = allSamples.map((s) => s.sampleScore).toList();
       final classConfidence = computeClassConfidence(sampleScores);
 
-      // --- Determine status (§6.4) ---
-      final status = determineStatus(classConfidence);
+      // --- Determine attendance status (§6.4) ---
+      final attendanceStatus = determineStatus(classConfidence);
 
-      // Update the record
+      // Update the record (only attendanceStatus, not classification)
       final checksJson =
           jsonEncode(allSamples.map((s) => s.toJson()).toList());
       await db.attendanceRecordsDao.updateDetectionResult(
         recordId,
         classConfidence,
-        status,
+        attendanceStatus,
         checksJson,
       );
 
       return sample;
     } catch (e) {
-      // Location unavailable — log and continue silently
+      // Location unavailable — create record with 'unknown' status (§5).
+      // Per attendance-rules.md: phone dead / airplane mode / no GPS
+      // → status='unknown', flagged for manual confirmation.
+      try {
+        final today = DateTime.now();
+        final startOfDay = DateTime(today.year, today.month, today.day);
+        final endOfDay = startOfDay.add(const Duration(days: 1));
+
+        final existingRecords = await (db.select(db.attendanceRecords)
+              ..where((r) =>
+                  r.timetableEntryId.equals(entry.id) &
+                  r.date.isBiggerOrEqualValue(startOfDay) &
+                  r.date.isSmallerThanValue(endOfDay)))
+            .get();
+
+        if (existingRecords.isEmpty) {
+          await db.attendanceRecordsDao.insertRecord(
+            AttendanceRecordsCompanion.insert(
+              timetableEntryId: entry.id,
+              date: startOfDay,
+              attendanceStatus: const Value('unknown'),
+              classification: const Value('normal'),
+            ),
+          );
+        }
+      } catch (_) {
+        // Completely failed — nothing more we can do
+      }
       return null;
     }
   }

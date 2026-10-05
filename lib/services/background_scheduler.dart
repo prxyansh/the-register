@@ -10,6 +10,7 @@ import 'notification_service.dart';
 /// Task names for WorkManager.
 const kAttendanceCheckTask = 'attendance_check';
 const kScheduleClassChecksTask = 'schedule_class_checks';
+const kAutoResolveTask = 'auto_resolve_stale';
 
 /// Background task scheduler — SPEC.md §5.4, §6.2, §9.
 ///
@@ -19,6 +20,10 @@ const kScheduleClassChecksTask = 'schedule_class_checks';
 /// - LOW density in middle 70% (students stable mid-class)
 /// - Check times randomized within each window (not predictable)
 /// - Each check is a one-off WorkManager task (lightweight, not continuous polling)
+///
+/// Updated for attendance-rules.md:
+/// - Skips scheduling on holidays (§4)
+/// - Runs 48-hour auto-resolve job for stale ambiguous/unknown records (§5)
 class BackgroundScheduler {
   /// Initialize WorkManager and register the background task dispatcher.
   static Future<void> initialize() async {
@@ -46,14 +51,44 @@ class BackgroundScheduler {
 
   /// Schedule adaptive checks for today's classes.
   /// Called when: app opens, timetable changes, or daily planner fires.
+  ///
+  /// Per attendance-rules.md §4: skips scheduling if today is a holiday.
+  /// Extended for academic calendar:
+  /// - Compensatory days: loads the alternate day's timetable
+  /// - Half-days: only schedules morning or afternoon classes
+  /// - Restricted holidays: tracks but marks classification as 'restricted'
+  /// - Exams/vacations/holidays/cancelled: no tracking at all
   static Future<void> scheduleChecksForToday() async {
     final db = AppDatabase();
 
     try {
       final now = DateTime.now();
-      final today = now.weekday; // 1=Monday, 7=Sunday (ISO 8601)
+      var today = now.weekday; // 1=Monday, 7=Sunday (ISO 8601)
 
-      // Get today's active timetable entries
+      // --- Check academic calendar for today ---
+      final event = await db.holidaysDao.getEventForDate(now);
+
+      if (event != null) {
+        final eventType = event.eventType;
+
+        // Full suppression types — no tracking at all
+        if (eventType == 'holiday' ||
+            eventType == 'exam' ||
+            eventType == 'cancelled' ||
+            eventType == 'vacation') {
+          return;
+        }
+
+        // Compensatory day — use the alternate day's timetable
+        if (eventType == 'compensatory' && event.followsDay != null) {
+          today = _weekdayFromName(event.followsDay!);
+        }
+      }
+
+      // Determine half-day constraints (null = full day)
+      final halfDayType = await db.holidaysDao.getHalfDayType(now);
+
+      // Get today's active timetable entries (or compensatory day's entries)
       final entries =
           await db.timetableEntriesDao.getEntriesForDay(today);
 
@@ -73,6 +108,12 @@ class BackgroundScheduler {
             now.year, now.month, now.day, startHour, startMinute);
         final classEnd =
             DateTime(now.year, now.month, now.day, endHour, endMinute);
+
+        // --- Half-day filtering ---
+        // If half_day_morning: morning classes are OFF → skip classes before 12:00
+        // If half_day_afternoon: afternoon classes are OFF → skip classes at/after 12:00
+        if (halfDayType == 'morning' && startHour < 12) continue;
+        if (halfDayType == 'afternoon' && startHour >= 12) continue;
 
         // Skip classes that have already ended
         if (classEnd.isBefore(now)) continue;
@@ -129,8 +170,56 @@ class BackgroundScheduler {
 
       // --- Schedule night-before summary for tomorrow ---
       await _scheduleNightBeforeSummary(db, now);
+
+      // --- Rule 5: Schedule auto-resolve for stale records ---
+      await _autoResolveStaleRecords(db);
     } finally {
       await db.close();
+    }
+  }
+
+  /// Convert a weekday name (e.g. "monday") to ISO 8601 weekday number.
+  static int _weekdayFromName(String name) {
+    const map = {
+      'monday': 1,
+      'tuesday': 2,
+      'wednesday': 3,
+      'thursday': 4,
+      'friday': 5,
+      'saturday': 6,
+      'sunday': 7,
+    };
+    return map[name.toLowerCase()] ?? 1;
+  }
+
+  /// Auto-resolve stale ambiguous/unknown records per attendance-rules.md §5.
+  ///
+  /// Any record still ambiguous or unknown after 48 hours auto-resolves:
+  /// - If partial signal exists → resolve toward what the data leans
+  /// - If zero signal → resolve to 'absent' (conservative assumption)
+  /// Marked with autoResolved=true so the UI shows them distinctly.
+  static Future<void> _autoResolveStaleRecords(AppDatabase db) async {
+    const staleThreshold = Duration(hours: 48);
+    final staleRecords =
+        await db.attendanceRecordsDao.getStaleUnresolvedRecords(staleThreshold);
+
+    for (final record in staleRecords) {
+      String resolvedStatus;
+
+      // Check if there's any partial signal data
+      if (record.checksJson != '[]' && record.checksJson.isNotEmpty) {
+        // Partial data exists — lean toward what the confidence suggests
+        if (record.confidenceScore >= 0.5) {
+          resolvedStatus = 'present';
+        } else {
+          resolvedStatus = 'absent';
+        }
+      } else {
+        // Zero signal (phone was off, no data at all) → absent by default
+        resolvedStatus = 'absent';
+      }
+
+      await db.attendanceRecordsDao.autoResolve(record.id, resolvedStatus);
     }
   }
 
@@ -139,23 +228,55 @@ class BackgroundScheduler {
       AppDatabase db, DateTime now) async {
     // Tomorrow's weekday (ISO 8601: 1=Mon, 7=Sun)
     final tomorrowWeekday = now.weekday == 7 ? 1 : now.weekday + 1;
-    final tomorrowEntries =
-        await db.timetableEntriesDao.getEntriesForDay(tomorrowWeekday);
 
-    if (tomorrowEntries.isEmpty) return;
+    // --- Rule 4: Check if tomorrow has a calendar event ---
+    final tomorrow = now.add(const Duration(days: 1));
+    final tomorrowEvent = await db.holidaysDao.getEventForDate(tomorrow);
+    
+    // Formatting the event for the notification
+    String? eventLabel;
+    bool suppressClasses = false;
+    
+    if (tomorrowEvent != null) {
+      eventLabel = '${tomorrowEvent.label} (${tomorrowEvent.eventType})';
+      
+      const suppressTypes = {'holiday', 'exam', 'cancelled', 'vacation'};
+      if (suppressTypes.contains(tomorrowEvent.eventType)) {
+        suppressClasses = true;
+      }
+    }
 
     final classList = <Map<String, String>>[];
-    for (final entry in tomorrowEntries) {
-      final subject =
-          await db.subjectsDao.getSubjectById(entry.subjectId);
-      classList.add({
-        'name': subject.name,
-        'time': entry.startTime,
-      });
+    
+    // Only get classes if attendance isn't fully suppressed
+    if (!suppressClasses) {
+      // Handle compensatory day logic for tomorrow
+      var effectiveWeekday = tomorrowWeekday;
+      if (tomorrowEvent?.eventType == 'compensatory' && tomorrowEvent?.followsDay != null) {
+        effectiveWeekday = _weekdayFromName(tomorrowEvent!.followsDay!);
+      }
+      
+      final tomorrowEntries = await db.timetableEntriesDao.getEntriesForDay(effectiveWeekday);
+
+      final halfDayType = await db.holidaysDao.getHalfDayType(tomorrow);
+
+      for (final entry in tomorrowEntries) {
+        // Filter based on half days
+        final startHour = int.parse(entry.startTime.split(':')[0]);
+        if (halfDayType == 'morning' && startHour < 12) continue;
+        if (halfDayType == 'afternoon' && startHour >= 12) continue;
+
+        final subject = await db.subjectsDao.getSubjectById(entry.subjectId);
+        classList.add({
+          'name': subject.name,
+          'time': entry.startTime,
+        });
+      }
     }
 
     await NotificationService.scheduleNightBeforeSummary(
       tomorrowClasses: classList,
+      calendarEvent: eventLabel,
     );
   }
 }
@@ -201,14 +322,14 @@ void callbackDispatcher() {
               if (records.isNotEmpty) {
                 final record = records.first;
                 final status =
-                    AttendanceStatus.fromDbValue(record.status);
+                    AttendanceStatus.fromDbValue(record.attendanceStatus);
                 if (status == AttendanceStatus.present ||
                     status == AttendanceStatus.absent) {
                   final subject = await db.subjectsDao
                       .getSubjectById(entry.subjectId);
                   await NotificationService.showAttendanceMarked(
                     subjectName: subject.name,
-                    status: record.status,
+                    status: record.attendanceStatus,
                   );
                 }
               }

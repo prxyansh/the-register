@@ -51,8 +51,7 @@ class _RegisterStampState extends State<RegisterStamp> with SingleTickerProvider
     super.didUpdateWidget(oldWidget);
     if (widget.status != oldWidget.status) {
       final isResolved = widget.status == AttendanceStatus.present || 
-                         widget.status == AttendanceStatus.absent ||
-                         widget.status == AttendanceStatus.manualOverride;
+                         widget.status == AttendanceStatus.absent;
       
       if (isResolved && oldWidget.status != widget.status) {
         // Trigger stamp animation if reduce motion is off
@@ -119,8 +118,8 @@ class _StampPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5;
       canvas.drawCircle(center, radius - 1, paint);
-    } else if (status == AttendanceStatus.ambiguous) {
-      // Pending/Ambiguous: Dotted outline
+    } else if (status == AttendanceStatus.ambiguous || status == AttendanceStatus.unknown) {
+      // Pending/Ambiguous/Unknown: Dotted outline
       final ambiguousColor = isDark ? RegisterTheme.ambiguousDark : RegisterTheme.ambiguous;
       final paint = Paint()
         ..color = ambiguousColor
@@ -129,7 +128,7 @@ class _StampPainter extends CustomPainter {
       _drawDottedCircle(canvas, center, radius - 1, paint);
     } else {
       // Resolved: Solid + Check/Slash
-      final isPresent = status == AttendanceStatus.present || status == AttendanceStatus.manualOverride;
+      final isPresent = status == AttendanceStatus.present;
       final bgColor = isPresent 
           ? (isDark ? RegisterTheme.presentDark : RegisterTheme.present)
           : (isDark ? RegisterTheme.absentDark : RegisterTheme.absent);
@@ -149,15 +148,19 @@ class _StampPainter extends CustomPainter {
       if (isPresent) {
         // Draw checkmark
         final path = Path();
-        path.moveTo(center.dx - radius * 0.4, center.dy + radius * 0.1);
-        path.lineTo(center.dx - radius * 0.1, center.dy + radius * 0.4);
-        path.lineTo(center.dx + radius * 0.4, center.dy - radius * 0.3);
+        // Visually centered checkmark
+        path.moveTo(center.dx - radius * 0.35, center.dy + radius * 0.05);
+        path.lineTo(center.dx - radius * 0.1, center.dy + radius * 0.3);
+        path.lineTo(center.dx + radius * 0.4, center.dy - radius * 0.25);
         canvas.drawPath(path, iconPaint);
       } else {
-        // Draw slash
+        // Draw cross (X) for absent instead of a single slash
         final path = Path();
-        path.moveTo(center.dx - radius * 0.4, center.dy - radius * 0.4);
-        path.lineTo(center.dx + radius * 0.4, center.dy + radius * 0.4);
+        final offset = radius * 0.35;
+        path.moveTo(center.dx - offset, center.dy - offset);
+        path.lineTo(center.dx + offset, center.dy + offset);
+        path.moveTo(center.dx + offset, center.dy - offset);
+        path.lineTo(center.dx - offset, center.dy + offset);
         canvas.drawPath(path, iconPaint);
       }
     }

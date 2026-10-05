@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app_database.dart';
+import 'attendance_status.dart';
 import 'daos/subjects_dao.dart';
 import 'daos/venues_dao.dart';
 import 'daos/timetable_entries_dao.dart';
 import 'daos/attendance_records_dao.dart';
+import 'daos/holidays_dao.dart';
 
 /// Single database instance shared across the app.
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -27,6 +30,11 @@ final timetableEntriesDaoProvider = Provider<TimetableEntriesDao>((ref) {
 
 final attendanceRecordsDaoProvider = Provider<AttendanceRecordsDao>((ref) {
   return ref.watch(databaseProvider).attendanceRecordsDao;
+});
+
+/// Holidays DAO provider — attendance-rules.md §4.
+final holidaysDaoProvider = Provider<HolidaysDao>((ref) {
+  return ref.watch(databaseProvider).holidaysDao;
 });
 
 /// Reactive stream providers for UI auto-updates.
@@ -64,4 +72,29 @@ final recordsForMonthProvider = StreamProvider.family<List<AttendanceRecord>, Da
   final start = DateTime(month.year, month.month, 1);
   final end = DateTime(month.year, month.month + 1, 1);
   return ref.watch(attendanceRecordsDaoProvider).watchRecordsForDateRange(start, end);
+});
+
+/// Reactive stream of all holidays — attendance-rules.md §4.
+final allHolidaysProvider = StreamProvider<List<Holiday>>((ref) {
+  return ref.watch(holidaysDaoProvider).watchAllHolidays();
+});
+
+/// Holidays for a specific month (for calendar display).
+final holidaysForMonthProvider = StreamProvider.family<List<Holiday>, DateTime>((ref, month) {
+  final start = DateTime(month.year, month.month, 1);
+  final end = DateTime(month.year, month.month + 1, 1);
+  return ref.watch(holidaysDaoProvider).watchHolidaysInRange(start, end);
+});
+
+/// User preference: how excused absences count — attendance-rules.md §6.
+/// Default: excluded (Option A).
+final excusedCountsAsProvider = StateProvider<ExcusedCountsAs>((ref) {
+  return ExcusedCountsAs.excluded;
+});
+
+/// Load excused_counts_as setting from SharedPreferences.
+final excusedCountsAsSettingProvider = FutureProvider<ExcusedCountsAs>((ref) async {
+  final prefs = await SharedPreferences.getInstance();
+  final value = prefs.getString('excused_counts_as') ?? 'excluded';
+  return ExcusedCountsAs.fromDbValue(value);
 });

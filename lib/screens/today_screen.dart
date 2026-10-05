@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -185,16 +186,15 @@ class TodayScreen extends ConsumerWidget {
       if (record == null) {
         pendingCount++;
       } else {
-        final status = AttendanceStatus.fromDbValue(record.status);
+        final status = AttendanceStatus.fromDbValue(record.attendanceStatus);
         switch (status) {
           case AttendanceStatus.present:
             presentCount++;
           case AttendanceStatus.absent:
             absentCount++;
           case AttendanceStatus.ambiguous:
+          case AttendanceStatus.unknown:
             ambiguousCount++;
-          case AttendanceStatus.manualOverride:
-            presentCount++; // Count overrides as resolved
         }
       }
     }
@@ -309,7 +309,7 @@ class _TodayClassCard extends ConsumerWidget {
             AttendanceRecordsCompanion.insert(
               timetableEntryId: entry.id,
               date: DateTime(now.year, now.month, now.day),
-              status: AttendanceStatus.absent.toDbValue(), // Default to absent until overridden
+              attendanceStatus: Value(AttendanceStatus.absent.toDbValue()),
             ),
           );
           currentRecord = await dao.getRecordById(id);
@@ -333,7 +333,7 @@ class _TodayClassCard extends ConsumerWidget {
 
   AttendanceStatus? _determineStatus() {
     if (record != null) {
-      return AttendanceStatus.fromDbValue(record!.status);
+      return AttendanceStatus.fromDbValue(record!.attendanceStatus);
     }
     
     // Determine status from time

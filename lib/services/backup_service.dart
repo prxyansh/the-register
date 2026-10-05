@@ -8,9 +8,12 @@ import '../data/app_database.dart';
 
 /// Export & import service — SPEC.md §7.
 ///
-/// - JSON export: serializes all 4 tables to a single JSON file.
-/// - CSV export: human-readable CSV of AttendanceRecords.
+/// - JSON export: serializes all tables (including Holidays) to a single JSON file.
+/// - CSV export: human-readable CSV of AttendanceRecords with new fields.
 /// - JSON import: restores data with merge/overwrite support.
+///
+/// Updated for attendance-rules.md: exports/imports the two-field model
+/// (attendanceStatus + classification), autoResolved flag, and Holidays table.
 class BackupService {
   final AppDatabase db;
 
@@ -23,9 +26,10 @@ class BackupService {
     final venues = await db.venuesDao.getAllVenues();
     final entries = await db.timetableEntriesDao.getAllEntries();
     final records = await db.attendanceRecordsDao.getAllRecords();
+    final holidays = await db.holidaysDao.getAllHolidays();
 
     final data = {
-      'version': 1,
+      'version': 2, // Bumped for new schema
       'exported_at': DateTime.now().toIso8601String(),
       'app': 'attendance_tracker',
       'subjects': subjects
@@ -34,6 +38,7 @@ class BackupService {
                 'name': s.name,
                 'color': s.color,
                 'target_attendance_pct': s.targetAttendancePct,
+                'faculty_name': s.facultyName,
               })
           .toList(),
       'venues': venues
@@ -62,10 +67,19 @@ class BackupService {
                 'id': r.id,
                 'timetable_entry_id': r.timetableEntryId,
                 'date': r.date.toIso8601String(),
-                'status': r.status,
+                'attendance_status': r.attendanceStatus,
+                'classification': r.classification,
                 'confidence_score': r.confidenceScore,
                 'checks_json': r.checksJson,
                 'override_reason': r.overrideReason,
+                'auto_resolved': r.autoResolved,
+              })
+          .toList(),
+      'holidays': holidays
+          .map((h) => {
+                'id': h.id,
+                'date': h.date.toIso8601String(),
+                'label': h.label,
               })
           .toList(),
     };
@@ -88,7 +102,7 @@ class BackupService {
     final subjects = await db.subjectsDao.getAllSubjects();
 
     final buffer = StringBuffer();
-    buffer.writeln('Date,Day,Subject,Start Time,End Time,Status,Confidence,Override Reason');
+    buffer.writeln('Date,Day,Subject,Start Time,End Time,Status,Classification,Confidence,Override Reason,Auto Resolved');
 
     for (final record in records) {
       final entry = entries.cast<TimetableEntry?>().firstWhere(
@@ -109,9 +123,11 @@ class BackupService {
         _csvEscape(subject?.name ?? 'Unknown'),
         entry?.startTime ?? '',
         entry?.endTime ?? '',
-        record.status,
+        record.attendanceStatus,
+        record.classification,
         record.confidenceScore.toStringAsFixed(2),
         _csvEscape(record.overrideReason ?? ''),
+        record.autoResolved ? 'Yes' : 'No',
       ].join(','));
     }
 
@@ -144,6 +160,8 @@ class BackupService {
 
   /// Import data from a JSON backup file.
   /// Returns a summary of what was imported.
+  ///
+  /// Handles both v1 (old single-status model) and v2 (new two-field model) formats.
   Future<ImportResult> importJson(String jsonContent) async {
     final data = jsonDecode(jsonContent) as Map<String, dynamic>;
 
@@ -152,10 +170,13 @@ class BackupService {
       throw FormatException('Not a valid attendance tracker backup file.');
     }
 
+    final backupVersion = data['version'] as int? ?? 1;
+
     int subjectsImported = 0;
     int venuesImported = 0;
     int entriesImported = 0;
     int recordsImported = 0;
+    int holidaysImported = 0;
 
     // Import subjects
     final subjectsData = data['subjects'] as List<dynamic>? ?? [];
@@ -166,6 +187,7 @@ class BackupService {
           name: map['name'] as String,
           color: map['color'] as int,
           targetAttendancePct: Value((map['target_attendance_pct'] as num).toDouble()),
+          facultyName: Value(map['faculty_name'] as String?),
         ));
         subjectsImported++;
       } catch (_) {
@@ -206,21 +228,60 @@ class BackupService {
       } catch (_) {}
     }
 
-    // Import attendance records
+    // Import attendance records — handle both v1 and v2 formats
     final recordsData = data['attendance_records'] as List<dynamic>? ?? [];
     for (final r in recordsData) {
       final map = r as Map<String, dynamic>;
       try {
+        String attendanceStatus;
+        String classification;
+        bool autoResolved;
+
+        if (backupVersion >= 2) {
+          // v2 format: has the new fields directly
+          attendanceStatus = map['attendance_status'] as String? ?? 'unknown';
+          classification = map['classification'] as String? ?? 'normal';
+          autoResolved = map['auto_resolved'] as bool? ?? false;
+        } else {
+          // v1 format: migrate old 'status' field
+          final oldStatus = map['status'] as String? ?? 'unknown';
+          if (oldStatus == 'manual_override') {
+            attendanceStatus = map['override_reason'] != null ? 'absent' : 'present';
+            classification = map['override_reason'] != null ? 'excused' : 'normal';
+          } else {
+            attendanceStatus = oldStatus;
+            classification = 'normal';
+          }
+          autoResolved = false;
+        }
+
         await db.attendanceRecordsDao.insertRecord(AttendanceRecordsCompanion.insert(
           timetableEntryId: map['timetable_entry_id'] as int,
           date: DateTime.parse(map['date'] as String),
-          status: map['status'] as String,
+          attendanceStatus: Value(attendanceStatus),
+          classification: Value(classification),
           confidenceScore: Value((map['confidence_score'] as num?)?.toDouble() ?? 0.0),
           checksJson: Value(map['checks_json'] as String? ?? '[]'),
           overrideReason: Value(map['override_reason'] as String?),
+          autoResolved: Value(autoResolved),
         ));
         recordsImported++;
       } catch (_) {}
+    }
+
+    // Import holidays (v2 only)
+    if (backupVersion >= 2) {
+      final holidaysData = data['holidays'] as List<dynamic>? ?? [];
+      for (final h in holidaysData) {
+        final map = h as Map<String, dynamic>;
+        try {
+          await db.holidaysDao.insertHoliday(HolidaysCompanion.insert(
+            date: DateTime.parse(map['date'] as String),
+            label: Value(map['label'] as String? ?? 'Holiday'),
+          ));
+          holidaysImported++;
+        } catch (_) {}
+      }
     }
 
     return ImportResult(
@@ -228,6 +289,7 @@ class BackupService {
       venuesImported: venuesImported,
       entriesImported: entriesImported,
       recordsImported: recordsImported,
+      holidaysImported: holidaysImported,
     );
   }
 
@@ -246,19 +308,22 @@ class ImportResult {
   final int venuesImported;
   final int entriesImported;
   final int recordsImported;
+  final int holidaysImported;
 
   ImportResult({
     required this.subjectsImported,
     required this.venuesImported,
     required this.entriesImported,
     required this.recordsImported,
+    this.holidaysImported = 0,
   });
 
   int get totalImported =>
-      subjectsImported + venuesImported + entriesImported + recordsImported;
+      subjectsImported + venuesImported + entriesImported + recordsImported + holidaysImported;
 
   @override
   String toString() =>
       '$subjectsImported subjects, $venuesImported venues, '
-      '$entriesImported entries, $recordsImported records';
+      '$entriesImported entries, $recordsImported records, '
+      '$holidaysImported holidays';
 }

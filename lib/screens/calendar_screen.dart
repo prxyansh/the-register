@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -196,8 +197,9 @@ class _MonthView extends ConsumerWidget {
     final entriesAsync = ref.watch(allTimetableEntriesProvider);
     final subjectsAsync = ref.watch(allSubjectsProvider);
     final venuesAsync = ref.watch(allVenuesProvider);
+    final holidaysAsync = ref.watch(holidaysForMonthProvider(month));
 
-    if (recordsAsync.isLoading || entriesAsync.isLoading) {
+    if (recordsAsync.isLoading || entriesAsync.isLoading || holidaysAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -205,6 +207,7 @@ class _MonthView extends ConsumerWidget {
     final entries = entriesAsync.valueOrNull ?? [];
     final subjects = subjectsAsync.valueOrNull ?? [];
     final venues = venuesAsync.valueOrNull ?? [];
+    final holidays = holidaysAsync.valueOrNull ?? [];
 
     final firstDay = DateTime(month.year, month.month, 1);
     final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
@@ -231,6 +234,7 @@ class _MonthView extends ConsumerWidget {
           allEntries: entries,
           allSubjects: subjects,
           allVenues: venues,
+          holidays: holidays,
         );
       },
     );
@@ -244,6 +248,7 @@ class _DateCell extends ConsumerWidget {
   final List<TimetableEntry> allEntries;
   final List<Subject> allSubjects;
   final List<Venue> allVenues;
+  final List<Holiday> holidays;
 
   const _DateCell({
     required this.date,
@@ -252,6 +257,7 @@ class _DateCell extends ConsumerWidget {
     required this.allEntries,
     required this.allSubjects,
     required this.allVenues,
+    required this.holidays,
   });
 
   @override
@@ -270,16 +276,75 @@ class _DateCell extends ConsumerWidget {
       return const SizedBox.shrink();
     }
 
+    Holiday? currentHoliday;
+    for (final h in holidays) {
+      final cellDate = DateTime(date.year, date.month, date.day);
+      final hStart = DateTime(h.date.year, h.date.month, h.date.day);
+      if (h.endDate != null) {
+        final hEnd = DateTime(h.endDate!.year, h.endDate!.month, h.endDate!.day);
+        if (cellDate.isAfter(hStart.subtract(const Duration(days: 1))) && 
+            cellDate.isBefore(hEnd.add(const Duration(days: 1)))) {
+          currentHoliday = h;
+          break;
+        }
+      } else {
+        if (hStart.isAtSameMomentAs(cellDate)) {
+          currentHoliday = h;
+          break;
+        }
+      }
+    }
+
+    Color? holidayColor;
+    if (currentHoliday != null) {
+      switch (currentHoliday.eventType) {
+        case 'holiday':
+        case 'vacation':
+          holidayColor = isDark ? Colors.orange.withValues(alpha: 0.2) : Colors.orange.shade100;
+          break;
+        case 'exam':
+          holidayColor = isDark ? Colors.red.withValues(alpha: 0.2) : Colors.red.shade100;
+          break;
+        case 'cancelled':
+          holidayColor = isDark ? Colors.grey.withValues(alpha: 0.3) : Colors.grey.shade200;
+          break;
+        case 'compensatory':
+          holidayColor = isDark ? Colors.blue.withValues(alpha: 0.2) : Colors.blue.shade100;
+          break;
+        case 'restricted':
+        case 'half_day_morning':
+        case 'half_day_afternoon':
+          holidayColor = isDark ? Colors.purple.withValues(alpha: 0.2) : Colors.purple.shade100;
+          break;
+      }
+    }
+
     return InkWell(
       onTap: () {
-        if (todayEntries.isEmpty) return;
-        _showDayDetail(context, ref, date, todayEntries, dayRecords, allSubjects, allVenues);
+        if (todayEntries.isEmpty && currentHoliday == null) return;
+
+        ScaffoldMessenger.of(context).clearSnackBars();
+
+        if (currentHoliday != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${currentHoliday.label} (${currentHoliday.eventType})'),
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+
+        if (todayEntries.isNotEmpty) {
+          _showDayDetail(context, ref, date, todayEntries, dayRecords, allSubjects, allVenues);
+        }
       },
       child: Container(
-        decoration: isToday ? BoxDecoration(
-          border: Border.all(color: theme.colorScheme.onSurface, width: 2),
+        decoration: BoxDecoration(
+          color: holidayColor,
+          border: isToday ? Border.all(color: theme.colorScheme.onSurface, width: 2) : null,
           borderRadius: BorderRadius.circular(8),
-        ) : null,
+        ),
         margin: const EdgeInsets.all(2),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -302,7 +367,7 @@ class _DateCell extends ConsumerWidget {
 
   AttendanceStatus? _determineStatus(DateTime date, TimetableEntry entry, AttendanceRecord? record) {
     if (record != null) {
-      return AttendanceStatus.fromDbValue(record.status);
+      return AttendanceStatus.fromDbValue(record.attendanceStatus);
     }
     
     final now = DateTime.now();
@@ -352,13 +417,13 @@ class _DateCell extends ConsumerWidget {
       if (effectiveStatus != null) {
         switch (effectiveStatus) {
           case AttendanceStatus.present:
-          case AttendanceStatus.manualOverride:
             dotColor = isDark ? RegisterTheme.presentDark : RegisterTheme.present;
             break;
           case AttendanceStatus.absent:
             dotColor = isDark ? RegisterTheme.absentDark : RegisterTheme.absent;
             break;
           case AttendanceStatus.ambiguous:
+          case AttendanceStatus.unknown:
             dotColor = isDark ? RegisterTheme.ambiguousDark : RegisterTheme.ambiguous;
             break;
         }
@@ -444,7 +509,7 @@ class _DateCell extends ConsumerWidget {
                             AttendanceRecordsCompanion.insert(
                               timetableEntryId: entry.id,
                               date: DateTime(date.year, date.month, date.day),
-                              status: AttendanceStatus.absent.toDbValue(),
+                              attendanceStatus: Value(AttendanceStatus.absent.toDbValue()),
                             ),
                           );
                           currentRecord = await dao.getRecordById(id);
