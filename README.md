@@ -26,16 +26,19 @@ Most importantly: **Your data never leaves your phone.** There are no cloud serv
 
 ---
 
-## Core Features (v1.0.0)
+## Core Features (v1.1.0)
 
 - **High-Accuracy Smart Automation:** Background tracking intelligently fuses GPS data and WiFi networks to ensure you never miss logging a class.
 - **100% Offline & Private:** Zero cloud analytics. Zero API keys. Total ownership of your data.
 - **Doze-Proof Battery Resilience:** Android's aggressive background-killing mechanics are bypassed natively. The app dynamically schedules checks and requests `IGNORE_BATTERY_OPTIMIZATIONS` so you never miss a tick.
+- **Advanced Attendance Analytics & Reports:** Deep insights into your attendance percentages, visualizing safe-to-miss classes, and tracking performance over the semester.
+- **Intelligent Calendar Integration:** Instantly parse and import your entire semester's class schedule using standard `.ics` file imports.
+- **Holidays & Exception Handling:** Comprehensive support for holidays to intelligently pause background automation, ensuring you aren't marked absent during term breaks.
+- **Encrypted Local Backups & Restore:** Keep your data safe with robust JSON-based offline backups, ensuring 100% data portability across devices.
+- **Granular Notification System:** Dynamic, non-intrusive local notifications keeping you in the loop on class start times and background attendance checks.
 - **Universal Manual Overrides:** If your phone dies, you can manually tap any class on the Today screen to retroactively mark yourself as Present, Absent, Sick, or Cancelled.
 - **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface without relying on proprietary Google Maps APIs.
-- **AI Timetable Sharing & Export:** Export and share your entire semester's timetable with classmates using base64 share codes, or use the built-in AI Prompt Guide to instantly generate your timetable JSON via ChatGPT/Claude.
 - **Heavy Haptics & Brutalist UX:** Thick borders, monospaced typography, stark empty states, and aggressive haptic feedback that makes every interaction feel premium and tactile.
-- **Dynamic Timezones:** Automatic calculation of local timezones ensuring that international students or remote workers never get the wrong notification time.
 
 ---
 
