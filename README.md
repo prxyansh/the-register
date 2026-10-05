@@ -2,9 +2,10 @@
 
 > A highly accurate, privacy-first, brutalist, **fully automatic**, offline attendance tracking application.
 
-![Release](https://img.shields.io/badge/Release-v1.0.0-black?style=for-the-badge)
+![Release](https://img.shields.io/badge/Release-v1.1.0-black?style=for-the-badge)
 ![Flutter](https://img.shields.io/badge/Flutter-3.x-blue?style=for-the-badge&logo=flutter)
 ![Platform](https://img.shields.io/badge/Platform-Android-green?style=for-the-badge&logo=android)
+![Open Source](https://img.shields.io/badge/Open_Source-100%25-purple?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)
 
 ---
@@ -39,6 +40,14 @@ Most importantly: **Your data never leaves your phone.** There are no cloud serv
 - **Universal Manual Overrides:** If your phone dies, you can manually tap any class on the Today screen to retroactively mark yourself as Present, Absent, Sick, or Cancelled.
 - **OpenStreetMap Integration:** Precisely pin your venues on a fully free and open map interface without relying on proprietary Google Maps APIs.
 - **Heavy Haptics & Brutalist UX:** Thick borders, monospaced typography, stark empty states, and aggressive haptic feedback that makes every interaction feel premium and tactile.
+
+---
+
+## 🌍 100% Open Source
+
+**The Register** is built on the philosophy that your data belongs to *you*. That's why this project is fully open source. There are no hidden trackers, no proprietary cloud backends, and no paywalled features. 
+
+We encourage students and developers to read the source code, verify our privacy claims, fork the repository, and contribute to making the best attendance tracking system possible!
 
 ---
 
