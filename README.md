@@ -8,6 +8,13 @@
 ![Open Source](https://img.shields.io/badge/Open_Source-100%25-purple?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-white?style=for-the-badge)
 
+<div align="center">
+  <h2>
+    🚀 <a href="https://github.com/prxyansh/the-register/releases/latest/download/TheRegister_v1.0.apk">CLICK HERE TO DOWNLOAD THE LATEST APK</a> 🚀
+  </h2>
+  <i>Or visit the <a href="https://github.com/prxyansh/the-register/releases/latest">Releases page</a> for older versions.</i>
+</div>
+
 ---
 
 ## The Problem (Why another attendance tracker?)
