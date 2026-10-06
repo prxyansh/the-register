@@ -17,6 +17,22 @@
 
 ---
 
+## Screenshots
+
+<div align="center">
+  <img src="screenshots/198shots_so.png" width="200" />
+  <img src="screenshots/241shots_so.png" width="200" />
+  <img src="screenshots/309shots_so.png" width="200" />
+  <img src="screenshots/322shots_so.png" width="200" />
+  <img src="screenshots/511shots_so.png" width="200" />
+  <img src="screenshots/545shots_so.png" width="200" />
+  <img src="screenshots/609shots_so.png" width="200" />
+  <img src="screenshots/958shots_so.png" width="200" />
+  <img src="screenshots/995shots_so.png" width="200" />
+</div>
+
+---
+
 ## The Problem (Why another attendance tracker?)
 
 There are hundreds of attendance tracking apps on the app stores. However, almost all of them suffer from three critical flaws:
