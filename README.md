@@ -22,7 +22,6 @@
 <div align="center">
   <img src="screenshots/198shots_so.png" width="200" />
   <img src="screenshots/241shots_so.png" width="200" />
-  <img src="screenshots/309shots_so.png" width="200" />
   <img src="screenshots/322shots_so.png" width="200" />
   <img src="screenshots/511shots_so.png" width="200" />
   <img src="screenshots/545shots_so.png" width="200" />
